@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation Hereoz API</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+      color: white;
+      padding: 2rem 0;
+      text-align: center;
+    }
+    
+    .header h1 {
+      margin-bottom: 0.5rem;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+    
+    .section {
+      margin-bottom: 3rem;
+    }
+    
+    .section-title {
+      border-bottom: 2px solid #6366F1;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.5rem;
+      color: #4F46E5;
+    }
+    
+    .card {
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 1.5rem;
+      border: none;
+      transition: transform 0.3s ease;
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+    }
+    
+    .card-header {
+      background-color: #f8f9fa;
+      font-weight: bold;
+      border-bottom: 1px solid #e9ecef;
+    }
+    
+    .badge-get {
+      background-color: #4CAF50;
+    }
+    
+    .badge-post {
+      background-color: #2196F3;
+    }
+    
+    .badge-put {
+      background-color: #FF9800;
+    }
+    
+    .badge-delete {
+      background-color: #F44336;
+    }
+    
+    .api-link {
+      display: block;
+      margin-top: 1rem;
+      text-align: center;
+    }
+    
+    .footer {
+      background-color: #f8f9fa;
+      padding: 2rem 0;
+      text-align: center;
+      margin-top: 2rem;
+    }
+    
+    pre {
+      background-color: #f8f9fa;
+      padding: 1rem;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+    
+    code {
+      font-family: 'Source Code Pro', monospace;
+      color: #e83e8c;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="container">
+      <h1>Documentation API Hereoz</h1>
+      <p class="lead">Plateforme de recrutement en hôtellerie-restauration</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="section">
+      <h2 class="section-title">Introduction</h2>
+      <p>
+        Bienvenue dans la documentation technique de l'API Hereoz. Cette API permet de gérer l'ensemble du processus
+        de recrutement, depuis la création des profils candidats et entreprises jusqu'à l'embauche, en passant par
+        le système de matching et les communications.
+      </p>
+      <p>
+        L'API est conçue selon les principes REST, utilisant JSON comme format d'échange et JWT pour l'authentification.
+      </p>
+      <a href="/api-docs" class="btn btn-primary api-link">Consulter la documentation Swagger</a>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Authentification</h2>
+      <p>
+        Toutes les routes protégées nécessitent un token JWT valide, à inclure dans l'en-tête HTTP Authorization.
+      </p>
+      <pre><code>Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYwYTIzZjg0NjVkYmVlMDAxNTY4OWEyYyIsImlhdCI6MTYyMTM0NjE4MCwiZXhwIjoxNjIxOTUwOTgwfQ.7g8Xm5qNSAqR5X7bLPLpD6zT4kDiNeLYYNGcvqLQA5E</code></pre>
+      <p>
+        Pour obtenir un token, utilisez les routes d'authentification suivantes:
+      </p>
+      
+      <div class="row">
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">
+              <span class="badge badge-post float-end">POST</span>
+              Inscription
+            </div>
+            <div class="card-body">
+              <code>/api/v1/auth/register</code>
+              <p class="mt-2">Crée un nouveau compte utilisateur (candidat ou recruteur).</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header">
+              <span class="badge badge-post float-end">POST</span>
+              Connexion
+            </div>
+            <div class="card-body">
+              <code>/api/v1/auth/login</code>
+              <p class="mt-2">Authentifie un utilisateur et retourne un token JWT.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Principales ressources</h2>
+      
+      <div class="card mb-4">
+        <div class="card-header">Utilisateurs</div>
+        <div class="card-body">
+          <p>Les utilisateurs peuvent être candidats ou recruteurs, avec des rôles et permissions différents.</p>
+          <pre><code>{
+  "id": "60a23f8465dbee0015689a2c",
+  "nom": "Dupont",
+  "prenom": "Jean",
+  "email": "jean.dupont@example.com",
+  "telephone": "+33612345678",
+  "role": "candidat",
+  "entreprise_id": null,
+  "photo_profil": "https://example.com/photos/jean.jpg",
+  "video_presentation": "https://example.com/videos/jean-presentation.mp4",
+  "premium": false
+}</code></pre>
+        </div>
+      </div>
+      
+      <div class="card mb-4">
+        <div class="card-header">Entreprises</div>
+        <div class="card-body">
+          <p>Les entreprises sont créées par des recruteurs et peuvent contenir plusieurs membres.</p>
+          <pre><code>{
+  "id": "60a24f8465dbee0015689b3d",
+  "nom": "Restaurant Le Gourmet",
+  "logo": "https://example.com/logos/le-gourmet.png",
+  "domaine_email": "legourmet.fr",
+  "adresse": "12 Rue de la Paix, 75002 Paris",
+  "secteur": "restauration",
+  "taille": "moyenne",
+  "site_web": "https://legourmet.fr",
+  "plan_actif": "pro"
+}</code></pre>
+        </div>
+      </div>
+      
+      <div class="card mb-4">
+        <div class="card-header">Offres d'emploi</div>
+        <div class="card-body">
+          <p>Les offres sont publiées par les recruteurs et consultées par les candidats.</p>
+          <pre><code>{
+  "id": "60a25f8465dbee0015689c4e",
+  "titre": "Chef de Partie",
+  "description": "Nous recherchons un chef de partie expérimenté...",
+  "entreprise_id": "60a24f8465dbee0015689b3d",
+  "salaire_min": 2500,
+  "salaire_max": 3000,
+  "localisation": "Paris",
+  "type_contrat": "cdi",
+  "statut": "active",
+  "tags_competences": ["cuisine française", "gestion d'équipe", "créativité"],
+  "experience_requise": 3
+}</code></pre>
+        </div>
+      </div>
+      
+      <div class="card mb-4">
+        <div class="card-header">Candidatures</div>
+        <div class="card-body">
+          <p>Les candidatures représentent l'intérêt d'un candidat pour une offre.</p>
+          <pre><code>{
+  "id": "60a26f8465dbee0015689d5f",
+  "utilisateur_id": "60a23f8465dbee0015689a2c",
+  "offre_id": "60a25f8465dbee0015689c4e",
+  "statut": "acceptee",
+  "message_personnalise": "Bonjour, je suis très intéressé par votre offre...",
+  "score_matching": 85
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Fonctionnalités clés</h2>
+      
+      <div class="card mb-4">
+        <div class="card-header">Système de matching</div>
+        <div class="card-body">
+          <p>
+            L'API intègre un système de matching qui calcule un score de compatibilité entre les candidats et les offres,
+            basé sur plusieurs critères:
+          </p>
+          <ul>
+            <li>Compétences (40% du score)</li>
+            <li>Expérience (20% du score)</li>
+            <li>Langues (20% du score)</li>
+            <li>Localisation et disponibilité (20% du score)</li>
+          </ul>
+          <p>
+            Pour obtenir des offres suggérées en tant que candidat:
+          </p>
+          <code>GET /api/v1/jobs/suggested</code>
+          
+          <p class="mt-3">
+            Pour obtenir des candidats suggérés en tant que recruteur:
+          </p>
+          <code>GET /api/v1/candidates/suggested?offre_id=60a25f8465dbee0015689c4e</code>
+        </div>
+      </div>
+      
+      <div class="card mb-4">
+        <div class="card-header">Système de Swipe</div>
+        <div class="card-body">
+          <p>
+            Inspiré des applications de rencontre, le système de swipe permet aux candidats d'exprimer leur intérêt
+            pour une offre:
+          </p>
+          <ul>
+            <li>Swipe droite = Candidature</li>
+            <li>Swipe gauche = Rejet</li>
+            <li>Favori = Sauvegarder pour plus tard</li>
+          </ul>
+          <p>
+            Pour enregistrer une action de swipe:
+          </p>
+          <code>POST /api/v1/applications/swipe</code>
+          <pre><code>{
+  "offre_id": "60a25f8465dbee0015689c4e",
+  "action": "droite",  // "droite", "gauche", "favori"
+  "motif_rejet": null  // Optionnel, motif en cas de rejet
+}</code></pre>
+        </div>
+      </div>
+      
+      <div class="card mb-4">
+        <div class="card-header">Messagerie en temps réel</div>
+        <div class="card-body">
+          <p>
+            La communication entre candidats et recruteurs est assurée par une messagerie en temps réel via WebSocket.
+          </p>
+          <p>
+            Pour établir une connexion WebSocket:
+          </p>
+          <pre><code>const socket = io('http://localhost:3000');
+
+// Authentification
+socket.emit('authenticate', 'your-jwt-token');
+
+// Envoi d'un message
+socket.emit('message', {
+  conversation_id: '60a27f8465dbee0015689e6f',
+  contenu: 'Bonjour, je suis intéressé par votre candidature.'
+});
+
+// Réception des messages
+socket.on('message', (message) => {
+  console.log('Nouveau message:', message);
+});</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2 class="section-title">Modèle de données</h2>
+      <p>
+        Le schéma de la base de données MongoDB comprend les principales collections suivantes:
+      </p>
+      <ul>
+        <li><strong>Users</strong>: Utilisateurs (candidats, recruteurs, admins)</li>
+        <li><strong>Entreprises</strong>: Profils des entreprises</li>
+        <li><strong>ProfilEntreprises</strong>: Informations détaillées des entreprises</li>
+        <li><strong>Competences</strong>: Compétences des candidats</li>
+        <li><strong>Experiences</strong>: Expériences professionnelles</li>
+        <li><strong>Referents</strong>: Validation des expériences</li>
+        <li><strong>Offres</strong>: Offres d'emploi</li>
+        <li><strong>Candidatures</strong>: Candidatures aux offres</li>
+        <li><strong>Conversations</strong>: Conversations entre candidats et recruteurs</li>
+        <li><strong>Messages</strong>: Messages échangés</li>
+        <li><strong>Entretiens</strong>: Rendez-vous d'entretien</li>
+        <li><strong>Paiements</strong>: Transactions et abonnements</li>
+      </ul>
+      <p>
+        Pour plus de détails sur les champs et relations, consultez la documentation Swagger.
+      </p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="container">
+      <p>© 2025 Hereoz - Plateforme de recrutement en hôtellerie-restauration</p>
+      <p>
+        <a href="/api-docs" class="text-decoration-none">Documentation API</a> | 
+        <a href="#" class="text-decoration-none">Support technique</a>
+      </p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
