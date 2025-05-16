@@ -1,216 +1,241 @@
-const logger = require('../utils/logger');
+/**
+ * Service de matching entre candidats et offres
+ * @module services/matchingService
+ */
 
-// Calculate match score between candidate and job
-exports.calculateMatchScore = async (candidate, job, experiences = [], skills = [], isRecruiterSearching = false) => {
-  try {
-    let score = 0;
-    const maxScore = 100;
-    
-    // Initialize scoring weights
-    const weights = {
-      skills: 35,
-      experience: 25,
-      languages: 15,
-      location: 15,
-      availability: 10
-    };
-    
-    // 1. Skills matching (35%)
-    const skillScore = calculateSkillScore(candidate, job, skills);
-    
-    // 2. Experience matching (25%)
-    const experienceScore = calculateExperienceScore(candidate, job, experiences);
-    
-    // 3. Languages matching (15%)
-    const languageScore = calculateLanguageScore(candidate, job);
-    
-    // 4. Location matching (15%)
-    const locationScore = calculateLocationScore(candidate, job);
-    
-    // 5. Availability matching (10%)
-    const availabilityScore = calculateAvailabilityScore(candidate, job);
-    
-    // Calculate weighted total score
-    score = (
-      (skillScore * weights.skills) +
-      (experienceScore * weights.experience) +
-      (languageScore * weights.languages) +
-      (locationScore * weights.location) +
-      (availabilityScore * weights.availability)
-    ) / 100;
-    
-    // Normalize score to 0-100
-    const normalizedScore = Math.min(Math.max(Math.round(score), 0), 100);
-    
-    // Apply premium boost if applicable and if recruiter is searching for candidates
-    if (isRecruiterSearching && candidate.isPremium) {
-      // Give a small boost to premium users (max 5%)
-      const premiumBoost = Math.min(5, 100 - normalizedScore);
-      return normalizedScore + premiumBoost;
-    }
-    
-    return normalizedScore;
-  } catch (error) {
-    logger.error(`Match Score Calculation Error: ${error.message}`);
-    return 50; // Default score on error
-  }
-};
+const User = require('../models/User');
+const Offre = require('../models/Offre');
+const Competence = require('../models/Competence');
+const Experience = require('../models/Experience');
+const Disponibilite = require('../models/Disponibilite');
+const Langue = require('../models/Langue');
 
-// Helper functions for score calculations
-function calculateSkillScore(candidate, job, skills) {
-  if (!job.requiredSkills || job.requiredSkills.length === 0) {
-    return 100; // No skills required, perfect match
+/**
+ * Calcule le score de matching entre un candidat et une offre
+ * @param {string} userId - ID du candidat
+ * @param {string} offreId - ID de l'offre
+ * @returns {Promise<number>} Score de matching (0-100)
+ */
+exports.calculateMatchingScore = async (userId, offreId) => {
+  const user = await User.findById(userId);
+  const offre = await Offre.findById(offreId);
+  
+  if (!user || !offre) {
+    throw new Error('Utilisateur ou offre non trouvé');
   }
   
-  // Extract candidate skills from the skills array
-  const candidateSkills = skills.map(s => s.name.toLowerCase());
+  // Récupérer les compétences du candidat
+  const competencesUser = await Competence.find({ utilisateur_id: userId });
+  const competencesNames = competencesUser.map(c => c.competence.toLowerCase());
   
-  // Count matching skills
-  const requiredSkills = job.requiredSkills.map(s => s.toLowerCase());
-  const matchingSkills = candidateSkills.filter(skill => 
-    requiredSkills.some(reqSkill => reqSkill.includes(skill) || skill.includes(reqSkill))
-  );
+  // Compétences requises par l'offre
+  const competencesRequises = offre.tags_competences.map(c => c.toLowerCase());
   
-  // Calculate skill match percentage
-  return Math.min(100, Math.round((matchingSkills.length / requiredSkills.length) * 100));
-}
-
-function calculateExperienceScore(candidate, job, experiences) {
-  // If no experience required, perfect match
-  if (!job.experienceRequired) {
-    return 100;
+  // Calcul du score de compétences (40% du score total)
+  let matchCompetences = 0;
+  if (competencesRequises.length > 0) {
+    const matchingCompetences = competencesRequises.filter(c => competencesNames.includes(c));
+    matchCompetences = (matchingCompetences.length / competencesRequises.length) * 40;
+  } else {
+    matchCompetences = 40; // Pas de compétences requises = score max
   }
   
-  // Calculate total relevant experience
-  let totalRelevantExperience = 0;
+  // Récupérer les expériences du candidat
+  const experiences = await Experience.find({ utilisateur_id: userId });
   
+  // Calculer l'expérience totale en années
+  let totalExperience = 0;
   experiences.forEach(exp => {
-    // Check if experience is relevant to the job
-    const isRelevant = exp.title.toLowerCase().includes(job.title.toLowerCase()) || 
-                      job.title.toLowerCase().includes(exp.title.toLowerCase());
-    
-    if (isRelevant) {
-      // Calculate duration in years
-      const startDate = new Date(exp.startDate);
-      const endDate = exp.endDate ? new Date(exp.endDate) : new Date();
-      const years = (endDate - startDate) / (1000 * 60 * 60 * 24 * 365.25);
-      
-      totalRelevantExperience += years;
-    }
+    const debut = new Date(exp.date_debut);
+    const fin = exp.date_fin ? new Date(exp.date_fin) : new Date();
+    const dureeAnnees = (fin - debut) / (1000 * 60 * 60 * 24 * 365);
+    totalExperience += dureeAnnees;
   });
   
-  // Calculate experience match percentage
-  if (totalRelevantExperience >= job.experienceRequired) {
-    return 100; // Meets or exceeds requirement
+  // Expérience requise par l'offre (20% du score total)
+  let matchExperience = 0;
+  if (offre.experience_requise > 0) {
+    matchExperience = Math.min(totalExperience / offre.experience_requise, 1) * 20;
   } else {
-    return Math.round((totalRelevantExperience / job.experienceRequired) * 100);
-  }
-}
-
-function calculateLanguageScore(candidate, job) {
-  if (!job.requiredLanguages || job.requiredLanguages.length === 0) {
-    return 100; // No languages required, perfect match
+    matchExperience = 20; // Pas d'expérience requise = score max
   }
   
-  // Extract candidate languages
-  const candidateLanguages = candidate.languages || [];
-  
-  // Count matching languages
-  const matchingLanguages = candidateLanguages.filter(lang => 
-    job.requiredLanguages.includes(lang)
-  );
-  
-  // Calculate language match percentage
-  return Math.min(100, Math.round((matchingLanguages.length / job.requiredLanguages.length) * 100));
-}
-
-function calculateLocationScore(candidate, job) {
-  // If job is remote, perfect location match
-  if (job.remote === 'full') {
-    return 100;
+  // Langues requises par l'offre (20% du score total)
+  let matchLangues = 0;
+  if (offre.langues_requises && offre.langues_requises.length > 0) {
+    const languesUser = await Langue.find({ utilisateur_id: userId });
+    const languesNames = languesUser.map(l => l.langue.toLowerCase());
+    
+    const languesRequises = offre.langues_requises.map(l => l.toLowerCase());
+    const matchingLangues = languesRequises.filter(l => languesNames.includes(l));
+    
+    matchLangues = (matchingLangues.length / languesRequises.length) * 20;
+  } else {
+    matchLangues = 20; // Pas de langues requises = score max
   }
   
-  // If location data is missing, give a middle score
-  if (!candidate.address || !job.location) {
-    return 50;
-  }
+  // Localisation et disponibilité (20% du score total)
+  let matchLocalisation = 10; // Par défaut 10%
   
-  // Simple exact match for now (could be enhanced with geocoding and distance calculation)
-  const candidateLocation = candidate.address.toLowerCase();
-  const jobLocation = job.location.toLowerCase();
-  
-  if (candidateLocation.includes(jobLocation) || jobLocation.includes(candidateLocation)) {
-    return 100;
-  }
-  
-  // Check for city or region match
-  const locationParts = jobLocation.split(',').map(part => part.trim());
-  const candidateParts = candidateLocation.split(',').map(part => part.trim());
-  
-  for (const part of candidateParts) {
-    if (locationParts.some(loc => loc.includes(part) || part.includes(loc))) {
-      return 75; // Partial match (same city/region)
+  // Si l'offre a une localisation spécifique et que l'utilisateur a indiqué sa position
+  if (offre.localisation && user.adresse) {
+    // Dans un vrai cas, on utiliserait un service de géolocalisation
+    // Pour simplifier, on simule une correspondance parfaite
+    if (user.adresse.includes(offre.localisation)) {
+      matchLocalisation = 20;
+    } else {
+      matchLocalisation = 10;
     }
   }
   
-  // If job allows hybrid, give a middle score for non-matching location
-  if (job.remote === 'hybrid') {
-    return 50;
+  // Si l'offre est en remote
+  if (offre.remote === 'full_remote') {
+    matchLocalisation = 20; // Score max pour remote
   }
   
-  // Low score for location mismatch
-  return 25;
-}
+  // Calcul du score total
+  const totalScore = matchCompetences + matchExperience + matchLangues + matchLocalisation;
+  
+  // Arrondir à l'entier le plus proche
+  return Math.round(totalScore);
+};
 
-function calculateAvailabilityScore(candidate, job) {
-  // If no desired start date for job, perfect match
-  if (!job.desiredStartDate) {
-    return 100;
+/**
+ * Trouve les meilleures offres pour un candidat
+ * @param {string} userId - ID du candidat
+ * @param {Object} filters - Filtres supplémentaires
+ * @param {number} page - Numéro de page
+ * @param {number} limit - Nombre d'offres par page
+ * @returns {Promise<Object>} Offres suggérées avec scores
+ */
+exports.getSuggestedOffres = async (userId, filters = {}, page = 1, limit = 10) => {
+  // Récupérer les offres actives
+  const query = { statut: 'active' };
+  
+  // Appliquer les filtres supplémentaires
+  if (filters.localisation) {
+    query.localisation = { $regex: filters.localisation, $options: 'i' };
   }
   
-  // If candidate doesn't have availability data, give a middle score
-  if (!candidate.availability || candidate.availability.length === 0) {
-    return 50;
+  if (filters.type_contrat) {
+    query.type_contrat = filters.type_contrat;
   }
   
-  // Check if candidate is available on or before desired start date
-  const jobStartDate = new Date(job.desiredStartDate);
-  const now = new Date();
-  
-  // If candidate is immediately available
-  if (candidate.availability.some(avail => avail.status === 'immediate')) {
-    return 100;
+  if (filters.remote) {
+    query.remote = filters.remote;
   }
   
-  // Find the earliest available date
-  const availableDates = candidate.availability
-    .filter(avail => avail.startDate)
-    .map(avail => new Date(avail.startDate));
+  // Récupérer toutes les offres qui correspondent aux filtres de base
+  const offres = await Offre.find(query);
   
-  if (availableDates.length === 0) {
-    return 50; // No specific dates, middle score
-  }
+  // Calculer le score de matching pour chaque offre
+  const offresScores = await Promise.all(
+    offres.map(async (offre) => {
+      const score = await this.calculateMatchingScore(userId, offre._id);
+      return {
+        offre,
+        score
+      };
+    })
+  );
   
-  const earliestAvailable = new Date(Math.min(...availableDates));
+  // Trier par score de matching décroissant
+  offresScores.sort((a, b) => b.score - a.score);
   
-  // If available before job start date
-  if (earliestAvailable <= jobStartDate) {
-    return 100;
-  }
+  // Appliquer la pagination
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+  const paginatedResults = offresScores.slice(startIndex, endIndex);
   
-  // Calculate days difference
-  const daysDifference = (earliestAvailable - jobStartDate) / (1000 * 60 * 60 * 24);
-  
-  // Score based on how close candidate availability is to job start date
-  if (daysDifference <= 7) {
-    return 90; // Available within a week after desired date
-  } else if (daysDifference <= 14) {
-    return 80; // Available within two weeks
-  } else if (daysDifference <= 30) {
-    return 60; // Available within a month
-  } else {
-    return 30; // Available after a month
-  }
-}
+  return {
+    suggestions: paginatedResults,
+    pagination: {
+      total: offresScores.length,
+      page,
+      limit,
+      pages: Math.ceil(offresScores.length / limit)
+    }
+  };
+};
 
-module.exports = exports;
+/**
+ * Trouve les meilleurs candidats pour une offre
+ * @param {string} offreId - ID de l'offre
+ * @param {Object} filters - Filtres supplémentaires
+ * @param {number} page - Numéro de page
+ * @param {number} limit - Nombre de candidats par page
+ * @returns {Promise<Object>} Candidats suggérés avec scores
+ */
+exports.getSuggestedCandidats = async (offreId, filters = {}, page = 1, limit = 10) => {
+  // Récupérer les candidats actifs
+  const query = { role: 'candidat' };
+  
+  // Récupérer tous les candidats qui correspondent aux filtres de base
+  const candidats = await User.find(query);
+  
+  // Calculer le score de matching pour chaque candidat
+  const candidatsScores = await Promise.all(
+    candidats.map(async (candidat) => {
+      const score = await this.calculateMatchingScore(candidat._id, offreId);
+      return {
+        candidat,
+        score
+      };
+    })
+  );
+  
+  // Trier par score de matching décroissant
+  candidatsScores.sort((a, b) => b.score - a.score);
+  
+  // Appliquer la pagination
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+  const paginatedResults = candidatsScores.slice(startIndex, endIndex);
+  
+  return {
+    suggestions: paginatedResults,
+    pagination: {
+      total: candidatsScores.length,
+      page,
+      limit,
+      pages: Math.ceil(candidatsScores.length / limit)
+    }
+  };
+};
+
+/**
+ * Enregistre l'action de swipe d'un utilisateur
+ * @param {string} userId - ID de l'utilisateur
+ * @param {string} offreId - ID de l'offre
+ * @param {string} action - Type d'action (droite, gauche, favori)
+ * @param {string} motifRejet - Motif de rejet optionnel
+ * @returns {Promise<Object>} Historique créé
+ */
+exports.recordSwipeAction = async (userId, offreId, action, motifRejet = null) => {
+  const SwipeHistorique = require('../models/SwipeHistorique');
+  
+  const historique = new SwipeHistorique({
+    utilisateur_id: userId,
+    offre_id: offreId,
+    action,
+    motif_rejet: motifRejet
+  });
+  
+  await historique.save();
+  
+  // Si c'est un swipe à droite, créer automatiquement une candidature
+  if (action === 'droite') {
+    const candidatureService = require('./candidatureService');
+    try {
+      await candidatureService.createCandidature(
+        { offre_id: offreId },
+        { _id: userId }
+      );
+    } catch (error) {
+      // Ignorer les erreurs si la candidature existe déjà
+      console.log(`Erreur lors de la création de candidature: ${error.message}`);
+    }
+  }
+  
+  return historique;
+};
