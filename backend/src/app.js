@@ -1,63 +1,118 @@
+/**
+ * Point d'entrée de l'application
+ * @module app
+ */
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const connectDB = require('./config/database');
-const { errorHandler } = require('./middlewares/errorMiddleware');
+const path = require('path');
+const http = require('http');
+const socketIo = require('socket.io');
+const { connectDB } = require('./config/db');
+const config = require('./config/config');
 const logger = require('./utils/logger');
-
-// Load env vars
-require('dotenv').config();
-
-// Connect to database
-connectDB();
-
-const app = express();
-
-// Middleware
-app.use(helmet()); // Security headers
-app.use(cors());
-app.use(express.json());
-app.use(morgan('dev'));
+const { specs, swaggerUi } = require('./utils/swagger');
+const { notFound, errorHandler } = require('./middlewares/error');
 
 // Routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/users', require('./routes/userRoutes'));
-app.use('/api/companies', require('./routes/companyRoutes'));
-app.use('/api/jobs', require('./routes/jobRoutes'));
-app.use('/api/applications', require('./routes/applicationRoutes'));
-app.use('/api/matches', require('./routes/matchRoutes'));
-app.use('/api/messages', require('./routes/messageRoutes'));
-app.use('/api/interviews', require('./routes/interviewRoutes'));
-app.use('/api/tests', require('./routes/testRoutes'));
-app.use('/api/stats', require('./routes/statsRoutes'));
-app.use('/api/payments', require('./routes/paymentRoutes'));
-app.use('/api/admin', require('./routes/adminRoutes'));
+const authRoutes = require('./routes/authRoutes');
+const offreRoutes = require('./routes/offreRoutes');
+const candidatureRoutes = require('./routes/candidatureRoutes');
+const entrepriseRoutes = require('./routes/entrepriseRoutes');
+// Ajouter d'autres routes au besoin
 
-// Error handler
-app.use(errorHandler);
-
-// Start server
-const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-  logger.info(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-});
-
-// Socket.io integration
-const io = require('socket.io')(server, {
+// Initialisation de l'app Express
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: [config.frontendUrls.main, config.frontendUrls.admin],
     methods: ['GET', 'POST']
   }
 });
 
-// Setup socket.io connection
-require('./services/socketService')(io);
+// Connexion à la base de données
+connectDB();
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-  logger.error(`Error: ${err.message}`);
-  server.close(() => process.exit(1));
+// Middlewares
+app.use(cors());
+app.use(helmet());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(morgan('dev'));
+
+// Servir les fichiers statiques
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Documentation Swagger
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+
+// Routes API
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/jobs', offreRoutes);
+app.use('/api/v1/applications', candidatureRoutes);
+app.use('/api/v1/companies', entrepriseRoutes);
+// Ajouter d'autres routes au besoin
+
+// Page de documentation web
+app.get('/documentation', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/documentation.html'));
 });
 
-module.exports = app;
+// Route racine pour vérifier que l'API fonctionne
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Bienvenue sur l\'API Hereoz!',
+    documentation: '/api-docs',
+    status: 'online'
+  });
+});
+
+// Middleware de gestion d'erreurs
+app.use(notFound);
+app.use(errorHandler);
+
+// Configuration WebSocket
+io.on('connection', (socket) => {
+  logger.info(`Nouvelle connexion WebSocket: ${socket.id}`);
+  
+  // Authentification WebSocket
+  socket.on('authenticate', (token) => {
+    // Implémentation de l'authentification par token JWT
+    // À compléter selon les besoins
+  });
+  
+  // Événement de chat
+  socket.on('message', (data) => {
+    // Gestion des messages
+    // À compléter selon les besoins
+  });
+  
+  // Déconnexion
+  socket.on('disconnect', () => {
+    logger.info(`Déconnexion WebSocket: ${socket.id}`);
+  });
+});
+
+// Démarrage du serveur
+const PORT = config.port;
+server.listen(PORT, () => {
+  logger.info(`Serveur démarré sur le port ${PORT} en mode ${config.env}`);
+  logger.info(`Documentation API disponible sur http://localhost:${PORT}/api-docs`);
+});
+
+// Gestion des exceptions non capturées
+process.on('uncaughtException', (err) => {
+  logger.error('Exception non capturée:', err);
+  process.exit(1);
+});
+
+// Gestion des rejets de promesses non capturés
+process.on('unhandledRejection', (err) => {
+  logger.error('Rejet de promesse non capturé:', err);
+  process.exit(1);
+});
+
+module.exports = { app, server, io };
