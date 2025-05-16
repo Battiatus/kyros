@@ -1,205 +1,168 @@
-const User = require('../models/User');
-const Company = require('../models/Company');
-const ErrorResponse = require('../utils/errorResponse');
-const asyncHandler = require('../middlewares/asyncHandler');
-const sendEmail = require('../utils/sendEmail');
-const crypto = require('crypto');
+/**
+ * Contrôleur d'authentification
+ * @module controllers/authController
+ */
 
-// @desc    Register user
-// @route   POST /api/auth/register
-// @access  Public
-exports.register = asyncHandler(async (req, res, next) => {
-  const { firstName, lastName, email, password, role, companyName } = req.body;
+const authService = require('../services/authService');
+const catchAsync = require('../utils/catchAsync');
 
-  // Create user
-  const user = await User.create({
-    firstName,
-    lastName,
-    email,
-    password,
-    role: role || 'candidate'
-  });
-
-  // If recruiter, create or associate with company
-  if (role === 'recruiter' || role === 'company_admin') {
-    if (companyName) {
-      const company = await Company.create({
-        name: companyName,
-        emailDomain: email.split('@')[1],
-        adminUser: user._id
-      });
-      
-      user.company = company._id;
-      await user.save();
-    } else {
-      // Try to find company by email domain
-      const domain = email.split('@')[1];
-      const company = await Company.findOne({ emailDomain: domain });
-      
-      if (company) {
-        user.company = company._id;
-        await user.save();
-      }
+/**
+ * Inscription d'un nouvel utilisateur
+ * @route POST /api/v1/auth/register
+ * @group Auth - Opérations d'authentification
+ * @param {Object} req.body - Données d'inscription
+ * @param {Object} res - Réponse Express
+ * @returns {Object} Utilisateur créé
+ */
+exports.register = catchAsync(async (req, res) => {
+  const userData = req.body;
+  
+  const user = await authService.register(userData);
+  
+  res.status(201).json({
+    success: true,
+    message: 'Inscription réussie. Veuillez vérifier votre email pour activer votre compte.',
+    data: {
+      user: user.toPublicJSON()
     }
-  }
+  });
+});
 
-  // Generate email verification token
-  const verificationToken = crypto.randomBytes(20).toString('hex');
-  user.verificationToken = crypto
-    .createHash('sha256')
-    .update(verificationToken)
-    .digest('hex');
+/**
+ * Connexion d'un utilisateur
+ * @route POST /api/v1/auth/login
+ * @group Auth - Opérations d'authentification
+ * @param {Object} req.body - Identifiants de connexion
+ * @param {Object} res - Réponse Express
+ * @returns {Object} Token JWT et informations utilisateur
+ */
+exports.login = catchAsync(async (req, res) => {
+  const { email, mot_de_passe } = req.body;
   
-  user.verificationExpire = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  const auth = await authService.login(email, mot_de_passe);
   
-  await user.save({ validateBeforeSave: false });
+  res.status(200).json({
+    success: true,
+    message: 'Connexion réussie',
+    data: auth
+  });
+});
 
-  // Create verification URL
-  const verificationUrl = `${req.protocol}://${req.get(
-    'host'
-  )}/api/auth/verify-email/${verificationToken}`;
-
-  const message = `Please click the following link to verify your email: \n\n ${verificationUrl}`;
-
-  try {
-    await sendEmail({
-      email: user.email,
-      subject: 'Email Verification',
-      message
+/**
+ * Validation de l'email d'un utilisateur
+ * @route GET /api/v1/auth/validate-email
+ * @group Auth - Opérations d'authentification
+ * @param {Object} req.query - Token de validation
+ * @param {Object} res - Réponse Express
+ * @returns {Object} Statut de validation
+ */
+exports.validateEmail = catchAsync(async (req, res) => {
+  const { token } = req.query;
+  
+  if (!token) {
+    return res.status(400).json({
+      success: false,
+      message: 'Token manquant'
     });
-
-    sendTokenResponse(user, 200, res);
-  } catch (err) {
-    user.verificationToken = undefined;
-    user.verificationExpire = undefined;
-    await user.save({ validateBeforeSave: false });
-
-    return next(new ErrorResponse('Email could not be sent', 500));
   }
-});
-
-// @desc    Login user
-// @route   POST /api/auth/login
-// @access  Public
-exports.login = asyncHandler(async (req, res, next) => {
-  const { email, password } = req.body;
-
-  // Validate email & password
-  if (!email || !password) {
-    return next(new ErrorResponse('Please provide an email and password', 400));
-  }
-
-  // Check for user
-  const user = await User.findOne({ email }).select('+password');
-
-  if (!user) {
-    return next(new ErrorResponse('Invalid credentials', 401));
-  }
-
-  // Check if password matches
-  const isMatch = await user.matchPassword(password);
-
-  if (!isMatch) {
-    return next(new ErrorResponse('Invalid credentials', 401));
-  }
-
-  // Update last login
-  user.lastLogin = Date.now();
-  await user.save();
-
-  sendTokenResponse(user, 200, res);
-});
-
-// @desc    Log user out / clear cookie
-// @route   GET /api/auth/logout
-// @access  Private
-exports.logout = asyncHandler(async (req, res, next) => {
-  res.cookie('token', 'none', {
-    expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true
-  });
-
-  res.status(200).json({
-    success: true,
-    data: {}
-  });
-});
-
-// @desc    Get current logged in user
-// @route   GET /api/auth/me
-// @access  Private
-exports.getMe = asyncHandler(async (req, res, next) => {
-  const user = await User.findById(req.user.id);
-
-  res.status(200).json({
-    success: true,
-    data: user
-  });
-});
-
-// @desc    Verify email
-// @route   GET /api/auth/verify-email/:token
-// @access  Public
-exports.verifyEmail = asyncHandler(async (req, res, next) => {
-  // Get hashed token
-  const verificationToken = crypto
-    .createHash('sha256')
-    .update(req.params.token)
-    .digest('hex');
-
-  const user = await User.findOne({
-    verificationToken,
-    verificationExpire: { $gt: Date.now() }
-  });
-
-  if (!user) {
-    return next(new ErrorResponse('Invalid token', 400));
-  }
-
-  // Set email as verified
-  user.emailVerified = true;
-  user.verificationToken = undefined;
-  user.verificationExpire = undefined;
   
-  await user.save();
-
+  await authService.validateEmail(token);
+  
   res.status(200).json({
     success: true,
-    message: 'Email verified successfully'
+    message: 'Email validé avec succès. Vous pouvez maintenant vous connecter.'
   });
 });
 
-// Helper function to get token from model, create cookie and send response
-const sendTokenResponse = (user, statusCode, res) => {
-  // Create token
-  const token = user.getSignedJwtToken();
+/**
+ * Demande de réinitialisation de mot de passe
+ * @route POST /api/v1/auth/forgot-password
+ * @group Auth - Opérations d'authentification
+ * @param {Object} req.body - Email de l'utilisateur
+ * @param {Object} res - Réponse Express
+ * @returns {Object} Statut de la demande
+ */
+exports.forgotPassword = catchAsync(async (req, res) => {
+  const { email } = req.body;
+  
+  await authService.forgotPassword(email);
+  
+  res.status(200).json({
+    success: true,
+    message: 'Si un compte est associé à cet email, un lien de réinitialisation a été envoyé.'
+  });
+});
 
-  const options = {
-    expires: new Date(
-      Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000
-    ),
-    httpOnly: true
-  };
+/**
+ * Réinitialisation du mot de passe
+ * @route POST /api/v1/auth/reset-password
+ * @group Auth - Opérations d'authentification
+ * @param {Object} req.body - Token et nouveau mot de passe
+ * @param {Object} res - Réponse Express
+ * @returns {Object} Statut de la réinitialisation
+ */
+exports.resetPassword = catchAsync(async (req, res) => {
+  const { token, mot_de_passe } = req.body;
+  
+  await authService.resetPassword(token, mot_de_passe);
+  
+  res.status(200).json({
+    success: true,
+    message: 'Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter.'
+  });
+});
 
-  if (process.env.NODE_ENV === 'production') {
-    options.secure = true;
-  }
+/**
+ * Profil de l'utilisateur connecté
+ * @route GET /api/v1/auth/me
+ * @group Auth - Opérations d'authentification
+ * @param {Object} req - Requête Express avec utilisateur authentifié
+ * @param {Object} res - Réponse Express
+ * @returns {Object} Informations de l'utilisateur
+ */
+exports.getMe = catchAsync(async (req, res) => {
+  res.status(200).json({
+    success: true,
+    data: {
+      user: req.user.toPublicJSON()
+    }
+  });
+});
 
-  res
-    .status(statusCode)
-    .cookie('token', token, options)
-    .json({
-      success: true,
-      token,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        isPremium: user.isPremium,
-        isVerified: user.isVerified,
-        emailVerified: user.emailVerified
-      }
-    });
+/**
+ * Connexion via Google
+ * @route GET /api/v1/auth/google
+ * @group Auth - Opérations d'authentification
+ */
+exports.googleAuth = (req, res) => {
+  // Cette route est gérée par Passport.js
 };
+
+/**
+ * Callback après authentification Google
+ * @route GET /api/v1/auth/google/callback
+ * @group Auth - Opérations d'authentification
+ */
+exports.googleCallback = catchAsync(async (req, res) => {
+  // Implémentation du callback à compléter avec Passport.js
+  res.redirect(`${process.env.FRONTEND_URL}/login-success`);
+});
+
+/**
+ * Connexion via LinkedIn
+ * @route GET /api/v1/auth/linkedin
+ * @group Auth - Opérations d'authentification
+ */
+exports.linkedinAuth = (req, res) => {
+  // Cette route est gérée par Passport.js
+};
+
+/**
+ * Callback après authentification LinkedIn
+ * @route GET /api/v1/auth/linkedin/callback
+ * @group Auth - Opérations d'authentification
+ */
+exports.linkedinCallback = catchAsync(async (req, res) => {
+  // Implémentation du callback à compléter avec Passport.js
+  res.redirect(`${process.env.FRONTEND_URL}/login-success`);
+});

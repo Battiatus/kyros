@@ -1,133 +1,157 @@
+/**
+ * Modèle d'utilisateur (candidat, recruteur, admin)
+ * @module models/User
+ */
+
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const Schema = mongoose.Schema;
 
-const UserSchema = new mongoose.Schema({
-  firstName: {
-    type: String,
-    required: [true, 'Please add a first name'],
-    trim: true,
-    maxlength: [50, 'First name cannot be more than 50 characters']
+/**
+ * Schéma utilisateur pour MongoDB
+ * @type {mongoose.Schema}
+ */
+const userSchema = new Schema(
+  {
+    nom: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    prenom: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true
+    },
+    telephone: {
+      type: String,
+      trim: true
+    },
+    mot_de_passe: {
+      type: String,
+      required: true,
+      minlength: 6
+    },
+    role: {
+      type: String,
+      enum: ['candidat', 'recruteur', 'admin_entreprise', 'admin_plateforme'],
+      required: true
+    },
+    entreprise_id: {
+      type: Schema.Types.ObjectId,
+      ref: 'Entreprise'
+    },
+    date_naissance: {
+      type: Date
+    },
+    nationalite: {
+      type: String
+    },
+    adresse: {
+      type: String
+    },
+    disponibilites: {
+      type: Object,
+      default: {}
+    },
+    photo_profil: {
+      type: String
+    },
+    video_presentation: {
+      type: String
+    },
+    avatar_genere: {
+      type: Object,
+      default: null
+    },
+    resume_pro: {
+      type: String
+    },
+    premium: {
+      type: Boolean,
+      default: false
+    },
+    premium_expiration: {
+      type: Date
+    },
+    boost_active: {
+      type: Boolean,
+      default: false
+    },
+    boost_expiration: {
+      type: Date
+    },
+    derniere_connexion: {
+      type: Date
+    },
+    validation_email: {
+      type: Boolean,
+      default: false
+    },
+    reset_token: {
+      type: String
+    },
+    reset_token_expiration: {
+      type: Date
+    },
+    oauth_profiles: {
+      google: { type: String },
+      linkedin: { type: String }
+    }
   },
-  lastName: {
-    type: String,
-    required: [true, 'Please add a last name'],
-    trim: true,
-    maxlength: [50, 'Last name cannot be more than 50 characters']
-  },
-  email: {
-    type: String,
-    required: [true, 'Please add an email'],
-    unique: true,
-    match: [
-      /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
-      'Please add a valid email'
-    ]
-  },
-  phone: String,
-  password: {
-    type: String,
-    required: [true, 'Please add a password'],
-    minlength: 6,
-    select: false
-  },
-  role: {
-    type: String,
-    enum: ['candidate', 'recruiter', 'company_admin', 'platform_admin'],
-    default: 'candidate'
-  },
-  company: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'Company'
-  },
-  profilePicture: String,
-  videoPresentationUrl: String,
-  avatarGenerated: Object,
-  resumeText: String,
-  dateOfBirth: Date,
-  nationality: String,
-  address: String,
-  availability: [Object],
-  isPremium: {
-    type: Boolean,
-    default: false
-  },
-  premiumExpiration: Date,
-  boostActive: {
-    type: Boolean,
-    default: false
-  },
-  boostExpiration: Date,
-  isVerified: {
-    type: Boolean,
-    default: false
-  },
-  emailVerified: {
-    type: Boolean,
-    default: false
-  },
-  completionPercentage: {
-    type: Number,
-    default: 0
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  lastLogin: Date
-});
-
-// Encrypt password using bcrypt
-UserSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) {
-    next();
+  {
+    timestamps: {
+      createdAt: 'date_creation',
+      updatedAt: 'date_mise_a_jour'
+    }
   }
+);
 
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+/**
+ * Pré-hook pour hacher le mot de passe avant de sauvegarder
+ */
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('mot_de_passe')) return next();
+  
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.mot_de_passe = await bcrypt.hash(this.mot_de_passe, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
-// Sign JWT and return
-UserSchema.methods.getSignedJwtToken = function() {
-  return jwt.sign(
-    { id: this._id, role: this.role },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRE }
-  );
+/**
+ * Méthode pour vérifier si le mot de passe correspond
+ * @param {string} password - Mot de passe en clair
+ * @returns {Promise<boolean>} Est valide ou non
+ */
+userSchema.methods.verifyPassword = async function(password) {
+  return await bcrypt.compare(password, this.mot_de_passe);
 };
 
-// Match user entered password to hashed password in database
-UserSchema.methods.matchPassword = async function(enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+/**
+ * Méthode pour générer les informations utilisateur sans données sensibles
+ * @returns {Object} Informations utilisateur sécurisées
+ */
+userSchema.methods.toPublicJSON = function() {
+  const userObject = this.toObject();
+  delete userObject.mot_de_passe;
+  delete userObject.reset_token;
+  delete userObject.reset_token_expiration;
+  delete userObject.oauth_profiles;
+  
+  return userObject;
 };
 
-// Calculate profile completion percentage
-UserSchema.methods.calculateCompletionPercentage = function() {
-  let fields = 0;
-  let completedFields = 0;
-  
-  // Required fields
-  const requiredFields = [
-    'firstName', 'lastName', 'email', 'phone', 'profilePicture', 
-    'resumeText', 'nationality', 'address'
-  ];
-  
-  fields += requiredFields.length;
-  
-  requiredFields.forEach(field => {
-    if (this[field]) completedFields++;
-  });
-  
-  // Optional fields with different weights
-  if (this.videoPresentationUrl || this.avatarGenerated) completedFields++;
-  fields++;
-  
-  if (this.availability && this.availability.length > 0) completedFields++;
-  fields++;
-  
-  // Calculate percentage
-  this.completionPercentage = Math.round((completedFields / fields) * 100);
-  return this.completionPercentage;
-};
+const User = mongoose.model('User', userSchema);
 
-module.exports = mongoose.model('User', UserSchema);
+module.exports = User;
