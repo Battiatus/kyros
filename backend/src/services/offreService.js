@@ -44,6 +44,48 @@ exports.getOffreById = async (offreId) => {
   return offre;
 };
 
+
+/**
+ * Optimise une offre avec l'IA
+ * @param {string} offreId - ID de l'offre
+ * @param {Object} user - Utilisateur
+ * @returns {Promise<Object>} Offre avec suggestions d'optimisation
+ */
+exports.optimizeOffreWithAI = async (offreId, user) => {
+  const offre = await Offre.findById(offreId).populate('entreprise_id');
+  if (!offre) {
+    throw new Error('Offre non trouvée');
+  }
+
+  // Vérifier les droits
+  if (offre.entreprise_id.toString() !== user.entreprise_id.toString()) {
+    throw new Error('Vous n\'avez pas les droits pour modifier cette offre');
+  }
+
+  try {
+    const aiService = require('./aiService');
+    const optimization = await aiService.optimizeJobOffer(offre, {
+      description: offre.entreprise_id.description,
+      taille: offre.entreprise_id.taille,
+      valeurs: offre.entreprise_id.valeurs
+    });
+
+    return {
+      originalOffre: offre,
+      optimization: optimization,
+      aiPowered: true
+    };
+  } catch (error) {
+    console.log('IA indisponible pour l\'optimisation:', error.message);
+    return {
+      originalOffre: offre,
+      message: 'Service d\'optimisation IA temporairement indisponible',
+      aiPowered: false
+    };
+  }
+};
+
+
 /**
  * Met à jour une offre existante
  * @param {string} offreId - ID de l'offre
