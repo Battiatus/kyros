@@ -27,6 +27,7 @@ const entretienRoutes = require('./routes/entretienRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const referentRoutes = require('./routes/referentRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 
 // Initialisation de l'app Express
 const app = express();
@@ -70,6 +71,8 @@ app.use('/api/v1/interviews', entretienRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/references', referentRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/ai', aiRoutes);
+
 
 // Page de documentation web
 app.get('/documentation', (req, res) => {
@@ -93,7 +96,8 @@ app.get('/', (req, res) => {
       interviews: '/api/v1/interviews',
       payments: '/api/v1/payments',
       references: '/api/v1/references',
-      admin: '/api/v1/admin'
+      admin: '/api/v1/admin',
+      ai: '/api/v1/ai' // Nouvelle route IA
     }
   });
 });
