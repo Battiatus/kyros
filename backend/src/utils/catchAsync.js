@@ -10,7 +10,7 @@
  * @returns {Function} Middleware Express avec gestion d'erreur
  */
 module.exports = fn => {
-    return (req, res, next) => {
-      Promise.resolve(fn(req, res, next)).catch(next);
-    };
+  return (req, res, next) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
   };
+};
