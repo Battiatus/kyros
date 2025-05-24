@@ -9,6 +9,7 @@ const Competence = require('../models/Competence');
 const Experience = require('../models/Experience');
 const Disponibilite = require('../models/Disponibilite');
 const Langue = require('../models/Langue');
+const SwipeHistorique = require('../models/SwipeHistorique');
 
 /**
  * Calcule le score de matching entre un candidat et une offre
@@ -81,7 +82,7 @@ exports.calculateMatchingScore = async (userId, offreId) => {
   if (offre.localisation && user.adresse) {
     // Dans un vrai cas, on utiliserait un service de géolocalisation
     // Pour simplifier, on simule une correspondance parfaite
-    if (user.adresse.includes(offre.localisation)) {
+    if (user.adresse.toLowerCase().includes(offre.localisation.toLowerCase())) {
       matchLocalisation = 20;
     } else {
       matchLocalisation = 10;
@@ -109,8 +110,15 @@ exports.calculateMatchingScore = async (userId, offreId) => {
  * @returns {Promise<Object>} Offres suggérées avec scores
  */
 exports.getSuggestedOffres = async (userId, filters = {}, page = 1, limit = 10) => {
-  // Récupérer les offres actives
-  const query = { statut: 'active' };
+  // Récupérer les offres déjà swipées pour les exclure
+  const swipedOffres = await SwipeHistorique.find({ utilisateur_id: userId });
+  const swipedOffreIds = swipedOffres.map(swipe => swipe.offre_id);
+  
+  // Récupérer les offres actives non encore swipées
+  const query = { 
+    statut: 'active',
+    _id: { $nin: swipedOffreIds }
+  };
   
   // Appliquer les filtres supplémentaires
   if (filters.localisation) {
@@ -125,17 +133,29 @@ exports.getSuggestedOffres = async (userId, filters = {}, page = 1, limit = 10) 
     query.remote = filters.remote;
   }
   
+  if (filters.salaire_min) {
+    query.salaire_min = { $gte: filters.salaire_min };
+  }
+  
   // Récupérer toutes les offres qui correspondent aux filtres de base
-  const offres = await Offre.find(query);
+  const offres = await Offre.find(query).populate('entreprise_id', 'nom logo');
   
   // Calculer le score de matching pour chaque offre
   const offresScores = await Promise.all(
     offres.map(async (offre) => {
-      const score = await this.calculateMatchingScore(userId, offre._id);
-      return {
-        offre,
-        score
-      };
+      try {
+        const score = await this.calculateMatchingScore(userId, offre._id);
+        return {
+          offre,
+          score
+        };
+      } catch (error) {
+        console.error(`Erreur calcul score pour offre ${offre._id}:`, error);
+        return {
+          offre,
+          score: 0
+        };
+      }
     })
   );
   
@@ -168,7 +188,16 @@ exports.getSuggestedOffres = async (userId, filters = {}, page = 1, limit = 10) 
  */
 exports.getSuggestedCandidats = async (offreId, filters = {}, page = 1, limit = 10) => {
   // Récupérer les candidats actifs
-  const query = { role: 'candidat' };
+  const query = { role: 'candidat', validation_email: true };
+  
+  // Appliquer les filtres supplémentaires
+  if (filters.localisation) {
+    query.adresse = { $regex: filters.localisation, $options: 'i' };
+  }
+  
+  if (filters.premium) {
+    query.premium = filters.premium;
+  }
   
   // Récupérer tous les candidats qui correspondent aux filtres de base
   const candidats = await User.find(query);
@@ -176,11 +205,19 @@ exports.getSuggestedCandidats = async (offreId, filters = {}, page = 1, limit = 
   // Calculer le score de matching pour chaque candidat
   const candidatsScores = await Promise.all(
     candidats.map(async (candidat) => {
-      const score = await this.calculateMatchingScore(candidat._id, offreId);
-      return {
-        candidat,
-        score
-      };
+      try {
+        const score = await this.calculateMatchingScore(candidat._id, offreId);
+        return {
+          candidat: candidat.toPublicJSON(),
+          score
+        };
+      } catch (error) {
+        console.error(`Erreur calcul score pour candidat ${candidat._id}:`, error);
+        return {
+          candidat: candidat.toPublicJSON(),
+          score: 0
+        };
+      }
     })
   );
   
@@ -212,30 +249,101 @@ exports.getSuggestedCandidats = async (offreId, filters = {}, page = 1, limit = 
  * @returns {Promise<Object>} Historique créé
  */
 exports.recordSwipeAction = async (userId, offreId, action, motifRejet = null) => {
-  const SwipeHistorique = require('../models/SwipeHistorique');
-  
-  const historique = new SwipeHistorique({
-    utilisateur_id: userId,
-    offre_id: offreId,
-    action,
-    motif_rejet: motifRejet
-  });
-  
-  await historique.save();
-  
-  // Si c'est un swipe à droite, créer automatiquement une candidature
-  if (action === 'droite') {
-    const candidatureService = require('./candidatureService');
-    try {
-      await candidatureService.createCandidature(
-        { offre_id: offreId },
-        { _id: userId }
-      );
-    } catch (error) {
-      // Ignorer les erreurs si la candidature existe déjà
-      console.log(`Erreur lors de la création de candidature: ${error.message}`);
-    }
+  // Calculer le score de matching
+  let scoreMatching = 0;
+  try {
+    scoreMatching = await this.calculateMatchingScore(userId, offreId);
+  } catch (error) {
+    console.error('Erreur calcul score matching:', error);
   }
   
-  return historique;
+  // Vérifier si un swipe existe déjà pour cette combinaison
+  const existingSwipe = await SwipeHistorique.findOne({
+    utilisateur_id: userId,
+    offre_id: offreId
+  });
+  
+  if (existingSwipe) {
+    // Mettre à jour l'action existante
+    existingSwipe.action = action;
+    existingSwipe.motif_rejet = motifRejet;
+    existingSwipe.score_matching = scoreMatching;
+    await existingSwipe.save();
+    
+    return existingSwipe;
+  } else {
+    // Créer un nouvel historique
+    const historique = new SwipeHistorique({
+      utilisateur_id: userId,
+      offre_id: offreId,
+      action,
+      motif_rejet: motifRejet,
+      score_matching: scoreMatching
+    });
+    
+    await historique.save();
+    
+    // Si c'est un swipe à droite, créer automatiquement une candidature
+    if (action === 'droite') {
+      const candidatureService = require('./candidatureService');
+      const User = require('../models/User');
+      
+      try {
+        const user = await User.findById(userId);
+        await candidatureService.createCandidature(
+          { offre_id: offreId },
+          user
+        );
+      } catch (error) {
+        // Ignorer les erreurs si la candidature existe déjà
+        console.log(`Erreur lors de la création de candidature: ${error.message}`);
+      }
+    }
+    
+    return historique;
+  }
+};
+
+/**
+ * Récupère l'historique de swipe d'un utilisateur
+ * @param {string} userId - ID de l'utilisateur
+ * @param {Object} filters - Filtres (action, date)
+ * @param {number} page - Numéro de page
+ * @param {number} limit - Nombre d'éléments par page
+ * @returns {Promise<Object>} Historique paginé
+ */
+exports.getSwipeHistory = async (userId, filters = {}, page = 1, limit = 10) => {
+  const query = { utilisateur_id: userId };
+  
+  if (filters.action) {
+    query.action = filters.action;
+  }
+  
+  if (filters.dateDebut) {
+    query.date = { $gte: new Date(filters.dateDebut) };
+  }
+  
+  if (filters.dateFin) {
+    query.date = { ...query.date, $lte: new Date(filters.dateFin) };
+  }
+  
+  const skip = (page - 1) * limit;
+  
+  const historique = await SwipeHistorique.find(query)
+    .populate('offre_id')
+    .sort({ date: -1 })
+    .skip(skip)
+    .limit(limit);
+  
+  const total = await SwipeHistorique.countDocuments(query);
+  
+  return {
+    historique,
+    pagination: {
+      total,
+      page,
+      limit,
+      pages: Math.ceil(total / limit)
+    }
+  };
 };
