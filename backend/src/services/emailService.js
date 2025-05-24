@@ -1,86 +1,36 @@
-/**
- * Service d'envoi d'emails
- * @module services/emailService
- */
-
-const nodemailer = require('nodemailer');
-const config = require('../config/config');
+// Ajouter ces méthodes au service emailService existant
 
 /**
- * Crée un transporteur pour l'envoi d'emails
- * @type {nodemailer.Transporter}
- */
-const transporter = nodemailer.createTransport({
-  host: config.email.host,
-  port: config.email.port,
-  secure: true,
-  "requireTLS": true,
-  auth: {
-    user: config.email.auth.user,
-    pass: config.email.auth.pass
-  },
-  logger: true,
-  debug: true
-});
-
-
-
-/**
- * Envoie un email de validation d'adresse
- * @param {string} to - Adresse email destinataire
- * @param {string} token - Token de validation
+ * Envoie une invitation d'entretien
+ * @param {string} to - Email du candidat
+ * @param {Object} entretien - Données de l'entretien
+ * @param {Object} candidature - Données de la candidature
+ * @param {Object} recruteur - Données du recruteur
  * @returns {Promise<Object>} Résultat de l'envoi
  */
-exports.sendEmailValidation = async (to, token) => {
-  const validationUrl = `${config.frontendUrls.main}/validate-email?token=${token}`;
+exports.sendInterviewInvitation = async (to, entretien, candidature, recruteur) => {
+  const dateEntretien = new Date(entretien.date_entretien).toLocaleString('fr-FR');
+  const mode = entretien.mode === 'visio' ? 'en visioconférence' : 'en présentiel';
   
   const mailOptions = {
     from: config.email.from,
     to,
-    subject: 'Hereoz - Validez votre adresse email',
+    subject: `Hereoz - Invitation à un entretien pour "${candidature.offre_id.titre}"`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Bienvenue sur Hereoz!</h2>
-        <p>Merci de vous être inscrit(e) sur notre plateforme. Pour activer votre compte, veuillez cliquer sur le bouton ci-dessous :</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${validationUrl}" style="background-color: #4CAF50; color: white; padding: 12px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">Valider mon email</a>
+        <h2 style="color: #333;">Invitation à un entretien</h2>
+        <p>Bonjour,</p>
+        <p>Nous avons le plaisir de vous inviter à un entretien pour le poste "${candidature.offre_id.titre}".</p>
+        <div style="background-color: #f8f8f8; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p><strong>Date et heure:</strong> ${dateEntretien}</p>
+          <p><strong>Mode:</strong> ${mode}</p>
+          <p><strong>Durée:</strong> ${entretien.duree} minutes</p>
+          ${entretien.lieu ? `<p><strong>Lieu:</strong> ${entretien.lieu}</p>` : ''}
+          ${entretien.lien_visio ? `<p><strong>Lien de connexion:</strong> <a href="${entretien.lien_visio}">${entretien.lien_visio}</a></p>` : ''}
+          ${entretien.notes ? `<p><strong>Notes:</strong> ${entretien.notes}</p>` : ''}
         </div>
-        <p>Si le bouton ne fonctionne pas, vous pouvez également copier et coller l'URL suivante dans votre navigateur :</p>
-        <p>${validationUrl}</p>
-        <p>Ce lien est valable pendant 24 heures.</p>
-        <p>À bientôt sur Hereoz!</p>
-      </div>
-    `
-  };
-  console.log(transporter);
-  
-  return await transporter.sendMail(mailOptions);
-};
-
-/**
- * Envoie un email de réinitialisation de mot de passe
- * @param {string} to - Adresse email destinataire
- * @param {string} token - Token de réinitialisation
- * @returns {Promise<Object>} Résultat de l'envoi
- */
-exports.sendPasswordReset = async (to, token) => {
-  const resetUrl = `${config.frontendUrls.main}/reset-password?token=${token}`;
-  
-  const mailOptions = {
-    from: config.email.from,
-    to,
-    subject: 'Hereoz - Réinitialisation de votre mot de passe',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Réinitialisation de votre mot de passe</h2>
-        <p>Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour créer un nouveau mot de passe :</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" style="background-color: #4CAF50; color: white; padding: 12px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">Réinitialiser mon mot de passe</a>
-        </div>
-        <p>Si le bouton ne fonctionne pas, vous pouvez également copier et coller l'URL suivante dans votre navigateur :</p>
-        <p>${resetUrl}</p>
-        <p>Ce lien est valable pendant 1 heure.</p>
-        <p>Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email.</p>
+        <p>Merci de confirmer votre participation en répondant à cet email ou via votre espace candidat.</p>
+        <p>Cordialement,<br>${recruteur.prenom} ${recruteur.nom}</p>
       </div>
     `
   };
@@ -89,138 +39,171 @@ exports.sendPasswordReset = async (to, token) => {
 };
 
 /**
- * Envoie un email de demande de validation de référence
- * @param {string} to - Adresse email destinataire
+ * Envoie une notification de mise à jour d'entretien
+ * @param {string} to - Email du destinataire
+ * @param {Object} entretien - Données de l'entretien
+ * @param {Object} candidature - Données de la candidature
+ * @param {Object} recruteur - Données du recruteur
+ * @returns {Promise<Object>} Résultat de l'envoi
+ */
+exports.sendInterviewUpdate = async (to, entretien, candidature, recruteur) => {
+  const dateEntretien = new Date(entretien.date_entretien).toLocaleString('fr-FR');
+  
+  const mailOptions = {
+    from: config.email.from,
+    to,
+    subject: `Hereoz - Modification de votre entretien pour "${candidature.offre_id.titre}"`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Modification d'entretien</h2>
+        <p>Bonjour,</p>
+        <p>Votre entretien pour le poste "${candidature.offre_id.titre}" a été modifié.</p>
+        <div style="background-color: #f8f8f8; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p><strong>Nouvelle date et heure:</strong> ${dateEntretien}</p>
+          <p><strong>Mode:</strong> ${entretien.mode === 'visio' ? 'Visioconférence' : 'Présentiel'}</p>
+          <p><strong>Durée:</strong> ${entretien.duree} minutes</p>
+          ${entretien.lieu ? `<p><strong>Lieu:</strong> ${entretien.lieu}</p>` : ''}
+          ${entretien.lien_visio ? `<p><strong>Lien:</strong> <a href="${entretien.lien_visio}">${entretien.lien_visio}</a></p>` : ''}
+        </div>
+        <p>Cordialement,<br>${recruteur.prenom} ${recruteur.nom}</p>
+      </div>
+    `
+  };
+  
+  return await transporter.sendMail(mailOptions);
+};
+
+/**
+ * Envoie une confirmation d'entretien
+ * @param {string} to - Email du recruteur
+ * @param {Object} entretien - Données de l'entretien
+ * @param {Object} candidature - Données de la candidature
+ * @returns {Promise<Object>} Résultat de l'envoi
+ */
+exports.sendInterviewConfirmation = async (to, entretien, candidature) => {
+  const dateEntretien = new Date(entretien.date_entretien).toLocaleString('fr-FR');
+  
+  const mailOptions = {
+    from: config.email.from,
+    to,
+    subject: `Hereoz - Entretien confirmé avec ${candidature.utilisateur_id.prenom} ${candidature.utilisateur_id.nom}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Entretien confirmé</h2>
+        <p>Bonjour,</p>
+        <p>${candidature.utilisateur_id.prenom} ${candidature.utilisateur_id.nom} a confirmé sa participation à l'entretien.</p>
+        <div style="background-color: #f8f8f8; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p><strong>Date et heure:</strong> ${dateEntretien}</p>
+          <p><strong>Candidat:</strong> ${candidature.utilisateur_id.prenom} ${candidature.utilisateur_id.nom}</p>
+          <p><strong>Poste:</strong> ${candidature.offre_id.titre}</p>
+        </div>
+        <p>L'entretien aura lieu comme prévu.</p>
+      </div>
+    `
+  };
+  
+  return await transporter.sendMail(mailOptions);
+};
+
+/**
+ * Envoie une notification d'annulation d'entretien
+ * @param {string} to - Email du destinataire
+ * @param {Object} entretien - Données de l'entretien
+ * @param {Object} candidature - Données de la candidature
+ * @param {string} cancelledBy - Qui a annulé ('candidat' ou 'recruteur')
+ * @param {string} motif - Motif d'annulation
+ * @returns {Promise<Object>} Résultat de l'envoi
+ */
+exports.sendInterviewCancellation = async (to, entretien, candidature, cancelledBy, motif) => {
+  const dateEntretien = new Date(entretien.date_entretien).toLocaleString('fr-FR');
+  const annulePar = cancelledBy === 'candidat' ? 'le candidat' : 'le recruteur';
+  
+  const mailOptions = {
+    from: config.email.from,
+    to,
+    subject: `Hereoz - Entretien annulé pour "${candidature.offre_id.titre}"`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Entretien annulé</h2>
+        <p>Bonjour,</p>
+        <p>L'entretien prévu le ${dateEntretien} pour le poste "${candidature.offre_id.titre}" a été annulé par ${annulePar}.</p>
+        ${motif ? `<p><strong>Motif:</strong> ${motif}</p>` : ''}
+        <p>Vous pouvez reprendre contact pour reprogrammer un nouvel entretien si souhaité.</p>
+      </div>
+    `
+  };
+  
+  return await transporter.sendMail(mailOptions);
+};
+
+/**
+ * Envoie le résultat de validation d'une référence
+ * @param {string} to - Email du candidat
  * @param {Object} referent - Données du référent
- * @param {Object} experience - Détails de l'expérience à valider
- * @param {Object} candidat - Informations sur le candidat
+ * @param {string} validation - Résultat ('valide' ou 'refuse')
+ * @param {string} commentaire - Commentaire du référent
+ * @returns {Promise<Object>} Résultat de l'envoi
+ */
+exports.sendReferenceValidationResult = async (to, referent, validation, commentaire) => {
+  const resultat = validation === 'valide' ? 'validée' : 'refusée';
+  const couleur = validation === 'valide' ? '#4CAF50' : '#F44336';
+  
+  const mailOptions = {
+    from: config.email.from,
+    to,
+    subject: `Hereoz - Votre référence a été ${resultat}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: ${couleur};">Référence ${resultat}</h2>
+        <p>Bonjour,</p>
+        <p>Votre référent ${referent.prenom} ${referent.nom} a ${resultat} votre expérience professionnelle.</p>
+        <div style="background-color: #f8f8f8; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <p><strong>Référent:</strong> ${referent.prenom} ${referent.nom}</p>
+          <p><strong>Poste:</strong> ${referent.poste}</p>
+          <p><strong>Entreprise:</strong> ${referent.entreprise}</p>
+          ${commentaire ? `<p><strong>Commentaire:</strong> "${commentaire}"</p>` : ''}
+        </div>
+        ${validation === 'valide' ? 
+          '<p>Félicitations ! Cette validation renforce la crédibilité de votre profil.</p>' :
+          '<p>Cette référence n\'a pas pu être validée. Vous pouvez contacter directement votre référent pour clarifier la situation.</p>'
+        }
+      </div>
+    `
+  };
+  
+  return await transporter.sendMail(mailOptions);
+};
+
+/**
+ * Envoie un rappel à un référent
+ * @param {string} to - Email du référent
+ * @param {Object} referent - Données du référent
+ * @param {Object} experience - Données de l'expérience
+ * @param {Object} candidat - Données du candidat
  * @param {string} token - Token de validation
  * @returns {Promise<Object>} Résultat de l'envoi
  */
-exports.sendReferenceValidation = async (to, referent, experience, candidat, token) => {
+exports.sendReferenceReminder = async (to, referent, experience, candidat, token) => {
   const validationUrl = `${config.frontendUrls.main}/validate-reference?token=${token}`;
   
   const mailOptions = {
     from: config.email.from,
     to,
-    subject: `Hereoz - ${candidat.prenom} ${candidat.nom} vous a ajouté comme référent professionnel`,
+    subject: `Hereoz - Rappel: Validation d'expérience pour ${candidat.prenom} ${candidat.nom}`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Demande de validation d'expérience professionnelle</h2>
+        <h2 style="color: #333;">Rappel - Validation d'expérience</h2>
         <p>Bonjour ${referent.prenom} ${referent.nom},</p>
-        <p>${candidat.prenom} ${candidat.nom} vous a ajouté comme référent pour valider son expérience professionnelle :</p>
+        <p>Ceci est un rappel concernant la demande de validation d'expérience de ${candidat.prenom} ${candidat.nom}.</p>
         <div style="background-color: #f8f8f8; padding: 15px; border-radius: 5px; margin: 20px 0;">
           <p><strong>Poste:</strong> ${experience.poste}</p>
           <p><strong>Entreprise:</strong> ${experience.entreprise}</p>
           <p><strong>Période:</strong> ${new Date(experience.date_debut).toLocaleDateString()} - ${experience.date_fin ? new Date(experience.date_fin).toLocaleDateString() : 'Présent'}</p>
         </div>
-        <p>Pour valider cette expérience, veuillez cliquer sur le bouton ci-dessous :</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${validationUrl}" style="background-color: #4CAF50; color: white; padding: 12px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">Valider l'expérience</a>
+          <a href="${validationUrl}" style="background-color: #4CAF50; color: white; padding: 12px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">Valider maintenant</a>
         </div>
-        <p>Si le bouton ne fonctionne pas, vous pouvez également copier et coller l'URL suivante dans votre navigateur :</p>
-        <p>${validationUrl}</p>
-        <p>Merci de votre aide pour garantir la qualité des profils sur notre plateforme!</p>
-      </div>
-    `
-  };
-  
-  return await transporter.sendMail(mailOptions);
-};
-
-/**
- * Envoie une notification pour une nouvelle candidature
- * @param {string} to - Adresse email destinataire
- * @param {Object} candidature - Détails de la candidature
- * @param {Object} candidat - Informations sur le candidat
- * @param {Object} offre - Détails de l'offre
- * @returns {Promise<Object>} Résultat de l'envoi
- */
-exports.sendNewApplicationNotification = async (to, candidature, candidat, offre) => {
-  const applicationUrl = `${config.frontendUrls.main}/recruteur/candidatures/${candidature._id}`;
-  
-  const mailOptions = {
-    from: config.email.from,
-    to,
-    subject: `Hereoz - Nouvelle candidature pour "${offre.titre}"`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Nouvelle candidature reçue</h2>
-        <p>Bonjour,</p>
-        <p>Vous avez reçu une nouvelle candidature pour votre offre "${offre.titre}".</p>
-        <div style="background-color: #f8f8f8; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <p><strong>Candidat:</strong> ${candidat.prenom} ${candidat.nom}</p>
-          <p><strong>Score de matching:</strong> ${candidature.score_matching}%</p>
-          ${candidature.message_personnalise ? `<p><strong>Message:</strong> "${candidature.message_personnalise}"</p>` : ''}
-        </div>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${applicationUrl}" style="background-color: #4CAF50; color: white; padding: 12px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">Voir la candidature</a>
-        </div>
-        <p>Ne manquez pas cette opportunité de découvrir ce candidat!</p>
-      </div>
-    `
-  };
-  
-  return await transporter.sendMail(mailOptions);
-};
-
-/**
- * Envoie une notification de mise à jour de statut de candidature
- * @param {string} to - Adresse email destinataire
- * @param {Object} candidature - Détails de la candidature
- * @param {Object} offre - Détails de l'offre
- * @param {string} nouveauStatut - Nouveau statut de la candidature
- * @returns {Promise<Object>} Résultat de l'envoi
- */
-exports.sendApplicationStatusUpdate = async (to, candidature, offre, nouveauStatut) => {
-  const applicationUrl = `${config.frontendUrls.main}/candidat/candidatures/${candidature._id}`;
-  
-  let statusMessage = '';
-  
-  switch (nouveauStatut) {
-    case 'vue':
-      statusMessage = 'Votre candidature a été consultée par le recruteur.';
-      break;
-    case 'favori':
-      statusMessage = 'Bonne nouvelle ! Votre candidature a été mise en favoris par le recruteur.';
-      break;
-    case 'acceptee':
-      statusMessage = 'Félicitations ! Votre candidature a été acceptée. Le recruteur vous contactera prochainement.';
-      break;
-    case 'rejetee':
-      statusMessage = 'Votre candidature n\'a malheureusement pas été retenue pour cette offre.';
-      break;
-    case 'entretien':
-      statusMessage = 'Le recruteur souhaite vous rencontrer ! Consultez les détails de l\'entretien proposé.';
-      break;
-    case 'contrat':
-      statusMessage = 'Félicitations ! Le recruteur vous propose un contrat. Consultez les détails dès que possible.';
-      break;
-    case 'embauchee':
-      statusMessage = 'Félicitations ! Votre embauche a été confirmée pour ce poste.';
-      break;
-    default:
-      statusMessage = 'Le statut de votre candidature a été mis à jour.';
-  }
-  
-  const mailOptions = {
-    from: config.email.from,
-    to,
-    subject: `Hereoz - Mise à jour de votre candidature pour "${offre.titre}"`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Mise à jour de candidature</h2>
-        <p>Bonjour,</p>
-        <p>${statusMessage}</p>
-        <div style="background-color: #f8f8f8; padding: 15px; border-radius: 5px; margin: 20px 0;">
-          <p><strong>Offre:</strong> ${offre.titre}</p>
-          <p><strong>Entreprise:</strong> ${offre.entreprise_nom}</p>
-          ${candidature.motif_refus ? `<p><strong>Commentaire du recruteur:</strong> "${candidature.motif_refus}"</p>` : ''}
-        </div>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${applicationUrl}" style="background-color: #4CAF50; color: white; padding: 12px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">Voir les détails</a>
-        </div>
-        <p>Continuez à explorer d'autres opportunités sur Hereoz!</p>
+        <p>Merci pour votre aide précieuse !</p>
       </div>
     `
   };
