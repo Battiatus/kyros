@@ -179,6 +179,52 @@ exports.getSuggestedOffres = async (userId, filters = {}, page = 1, limit = 10) 
 };
 
 /**
+ * Calcule le score de matching avec IA si disponible
+ * @param {string} userId - ID du candidat
+ * @param {string} offreId - ID de l'offre
+ * @returns {Promise<Object>} Score et analyse détaillée
+ */
+exports.calculateMatchingScoreWithAI = async (userId, offreId) => {
+  try {
+    const aiService = require('./aiService');
+    const profileService = require('./profileService');
+    
+    const [candidate, job] = await Promise.all([
+      profileService.getFullProfile(userId),
+      Offre.findById(offreId)
+    ]);
+
+    // Essayer d'abord avec l'IA
+    const aiResult = await aiService.calculateAdvancedMatching(candidate, job);
+    
+    return {
+      score: aiResult.overallScore,
+      details: {
+        skills: aiResult.skillsMatch,
+        experience: aiResult.experienceMatch,
+        cultural: aiResult.culturalFit,
+        strengths: aiResult.strengths,
+        concerns: aiResult.concerns,
+        explanation: aiResult.explanation
+      },
+      aiPowered: true
+    };
+  } catch (error) {
+    console.log('IA indisponible, utilisation de l\'algorithme classique:', error.message);
+    
+    // Fallback sur l'algorithme classique
+    const classicScore = await this.calculateMatchingScore(userId, offreId);
+    return {
+      score: classicScore,
+      details: {
+        message: 'Score calculé avec l\'algorithme classique'
+      },
+      aiPowered: false
+    };
+  }
+};
+
+/**
  * Trouve les meilleurs candidats pour une offre
  * @param {string} offreId - ID de l'offre
  * @param {Object} filters - Filtres supplémentaires
