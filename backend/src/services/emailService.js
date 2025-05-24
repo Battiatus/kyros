@@ -20,6 +20,8 @@ const transporter = nodemailer.createTransport({
   }
 });
 
+console.log(transporter);
+
 /**
  * Envoie un email de validation d'adresse
  * @param {string} to - Adresse email destinataire
