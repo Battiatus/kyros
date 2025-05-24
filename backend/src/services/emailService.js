@@ -13,14 +13,17 @@ const config = require('../config/config');
 const transporter = nodemailer.createTransport({
   host: config.email.host,
   port: config.email.port,
-  secure: config.email.port === 465,
+  secure: true,
+  "requireTLS": true,
   auth: {
     user: config.email.auth.user,
     pass: config.email.auth.pass
-  }
+  },
+  logger: true,
+  debug: true
 });
 
-console.log(transporter);
+
 
 /**
  * Envoie un email de validation d'adresse
@@ -49,6 +52,7 @@ exports.sendEmailValidation = async (to, token) => {
       </div>
     `
   };
+  console.log(transporter);
   
   return await transporter.sendMail(mailOptions);
 };
