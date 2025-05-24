@@ -3,8 +3,18 @@
  */
 
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../utils/api';
+import axios from 'axios';
 import { toast } from 'react-toastify';
+import config from '../../config/config';
+
+// Instance axios spécifique pour l'auth (pour éviter les imports circulaires)
+const authApi = axios.create({
+  baseURL: config.apiUrl,
+  timeout: config.apiTimeout,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 // État initial
 const initialState = {
@@ -20,7 +30,7 @@ export const login = createAsyncThunk(
   'auth/login',
   async (credentials, { rejectWithValue }) => {
     try {
-      const response = await api.post('/auth/login', credentials);
+      const response = await authApi.post('/auth/login', credentials);
       
       // Vérifier que l'utilisateur est admin
       if (response.data.data.user.role !== 'admin_plateforme') {
@@ -39,9 +49,16 @@ export const login = createAsyncThunk(
 // Thunk pour récupérer le profil utilisateur
 export const getProfile = createAsyncThunk(
   'auth/getProfile',
-  async (_, { rejectWithValue }) => {
+  async (_, { getState, rejectWithValue }) => {
     try {
-      const response = await api.get('/auth/me');
+      const { auth } = getState();
+      const token = auth.token;
+      
+      const response = await authApi.get('/auth/me', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       
       // Vérifier que l'utilisateur est admin
       if (response.data.data.user.role !== 'admin_plateforme') {
@@ -62,7 +79,7 @@ export const forgotPassword = createAsyncThunk(
   'auth/forgotPassword',
   async (email, { rejectWithValue }) => {
     try {
-      const response = await api.post('/auth/forgot-password', { email });
+      const response = await authApi.post('/auth/forgot-password', { email });
       toast.success(response.data.message);
       return response.data;
     } catch (error) {
