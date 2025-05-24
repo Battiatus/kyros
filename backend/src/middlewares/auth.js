@@ -77,7 +77,7 @@ exports.hasRole = (roles) => {
  */
 exports.isCompanyMember = async (req, res, next) => {
   try {
-    const { entrepriseId } = req.params;
+    const { id: entrepriseId } = req.params;
     
     if (!req.user.entreprise_id || req.user.entreprise_id.toString() !== entrepriseId) {
       return res.status(403).json({
@@ -100,7 +100,7 @@ exports.isCompanyMember = async (req, res, next) => {
  */
 exports.isCompanyAdmin = async (req, res, next) => {
   try {
-    const { entrepriseId } = req.params;
+    const { id: entrepriseId } = req.params;
     
     if (req.user.role !== 'admin_entreprise') {
       return res.status(403).json({
