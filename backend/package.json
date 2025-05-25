@@ -33,6 +33,7 @@
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",
     "uuid": "^11.1.0",
+    "js-yaml": "^4.1.0",
     "winston": "^3.11.0",
     "@aws-sdk/client-bedrock-runtime": "^3.450.0",
     "@google-cloud/vertexai": "^1.1.0",
