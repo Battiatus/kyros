@@ -2,10 +2,13 @@
  * Configuration de Swagger pour la documentation API
  * @module utils/swagger
  */
-
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const config = require('../config/config');
+const swaggerCustomOptions = require('./swagger-custom');
+
+// Logo en base64 pour l'intégrer dans la documentation
+const logoBase64 = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiM2MzY2RjEiLz4KPHBhdGggZD0iTTE0IDIwSDI2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8cGF0aCBkPSJNMjAgMTRWMjYiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPg==';
 
 // Options de configuration Swagger
 const options = {
@@ -14,16 +17,128 @@ const options = {
     info: {
       title: 'API Hereoz',
       version: '1.0.0',
-      description: 'Documentation API de la plateforme Hereoz de recrutement en hôtellerie-restauration',
+      description: `
+# 🚀 Bienvenue sur la documentation de l'API Hereoz
+
+**Hereoz** est la plateforme de recrutement révolutionnaire dédiée au secteur de l'hôtellerie-restauration. 
+Notre API RESTful permet une intégration complète avec tous les services de la plateforme.
+
+## 🎯 Fonctionnalités principales
+
+- **Matching intelligent** : Algorithme de compatibilité candidat/offre basé sur l'IA
+- **Système de swipe** : Interface intuitive inspirée des applications de rencontre
+- **Validation des expériences** : Vérification par référents professionnels
+- **Messagerie temps réel** : Communication instantanée via WebSocket
+- **Gestion des entretiens** : Planification et visioconférence intégrées
+- **Paiements sécurisés** : Intégration Stripe pour les abonnements
+
+## 🔐 Authentification
+
+L'API utilise des tokens JWT pour l'authentification. Incluez le token dans l'en-tête de vos requêtes :
+
+\`\`\`
+Authorization: Bearer {votre_token_jwt}
+\`\`\`
+
+## 📊 Limites de taux
+
+- **Requêtes authentifiées** : 1000 requêtes/heure
+- **Requêtes non authentifiées** : 100 requêtes/heure
+
+## 🌐 Environnements
+
+- **Production** : https://api.hereoz.com
+- **Staging** : https://staging-api.hereoz.com
+- **Développement** : http://localhost:3000
+
+## 📚 Ressources
+
+- [Documentation complète](https://docs.hereoz.com)
+- [Statut de l'API](https://status.hereoz.com)
+- [Changelog](https://github.com/hereoz/api/releases)
+- [Support technique](mailto:api-support@hereoz.com)
+
+---
+
+<img src="${logoBase64}" alt="Hereoz" width="100" style="display: block; margin: 20px auto;">
+      `,
+      termsOfService: 'https://hereoz.com/terms',
       contact: {
-        name: 'Support Hereoz',
-        email: 'support@hereoz.com'
+        name: 'Support API Hereoz',
+        email: 'api-support@hereoz.com',
+        url: 'https://support.hereoz.com'
+      },
+      license: {
+        name: 'Propriétaire',
+        url: 'https://hereoz.com/license'
+      },
+      'x-logo': {
+        url: logoBase64,
+        altText: 'Hereoz Logo'
       }
+    },
+    externalDocs: {
+      description: 'Documentation complète Hereoz',
+      url: 'https://docs.hereoz.com'
     },
     servers: [
       {
-        url: `http://localhost:${config.port}/`,
-        description: 'Serveur de développement'
+        url: `http://localhost:${config.port}/api/v1`,
+        description: 'Serveur de développement local'
+      },
+      {
+        url: 'https://staging-api.hereoz.com/api/v1',
+        description: 'Serveur de staging'
+      },
+      {
+        url: 'https://api.hereoz.com/api/v1',
+        description: 'Serveur de production'
+      }
+    ],
+    tags: [
+      {
+        name: 'Auth',
+        description: 'Authentification et gestion des sessions'
+      },
+      {
+        name: 'Profils',
+        description: 'Gestion des profils utilisateurs'
+      },
+      {
+        name: 'Offres',
+        description: 'Création et gestion des offres d\'emploi'
+      },
+      {
+        name: 'Candidatures',
+        description: 'Gestion des candidatures et matching'
+      },
+      {
+        name: 'Entreprises',
+        description: 'Gestion des profils entreprises'
+      },
+      {
+        name: 'Messages',
+        description: 'Messagerie temps réel'
+      },
+      {
+        name: 'Entretiens',
+        description: 'Planification des entretiens'
+      },
+      {
+        name: 'Paiements',
+        description: 'Gestion des paiements et abonnements'
+      },
+      {
+        name: 'Références',
+        description: 'Validation des expériences'
+      },
+      {
+        name: 'Admin',
+        description: 'Administration de la plateforme'
+      },
+      {
+        name: 'Documentation',
+        description: 'Outils de documentation'
       }
     ],
     components: {
@@ -31,266 +146,126 @@ const options = {
         bearerAuth: {
           type: 'http',
           scheme: 'bearer',
-          bearerFormat: 'JWT'
+          bearerFormat: 'JWT',
+          description: 'Entrez votre token JWT'
         }
       },
       schemas: {
-        CreateEntreprise: {
+        // Schémas existants...
+        Error: {
           type: 'object',
-          required: ['nom', 'secteur', 'taille'],
+          required: ['success', 'message'],
           properties: {
-            nom: {
-              type: 'string',
-              description: 'Nom de l\'entreprise'
+            success: {
+              type: 'boolean',
+              example: false
             },
-            domaine_email: {
+            message: {
               type: 'string',
-              description: 'Domaine email de l\'entreprise'
+              example: 'Une erreur est survenue'
             },
-            adresse: {
-              type: 'string',
-              description: 'Adresse physique'
-            },
-            secteur: {
-              type: 'string',
-              description: 'Secteur d\'activité'
-            },
-            taille: {
-              type: 'string',
-              enum: ['petite', 'moyenne', 'grande'],
-              description: 'Taille de l\'entreprise'
-            },
-            site_web: {
-              type: 'string',
-              description: 'Site web'
-            },
-            description: {
-              type: 'string',
-              description: 'Description de l\'entreprise'
+            errors: {
+              type: 'object',
+              additionalProperties: {
+                type: 'string'
+              }
             }
           }
         },
-        UpdateEntreprise: {
+        Success: {
           type: 'object',
+          required: ['success', 'data'],
           properties: {
-            nom: {
+            success: {
+              type: 'boolean',
+              example: true
+            },
+            message: {
               type: 'string',
-              description: 'Nom de l\'entreprise'
+              example: 'Opération réussie'
             },
-            adresse: {
-              type: 'string',
-              description: 'Adresse physique'
-            },
-            secteur: {
-              type: 'string',
-              description: 'Secteur d\'activité'
-            },
-            taille: {
-              type: 'string',
-              enum: ['petite', 'moyenne', 'grande'],
-              description: 'Taille de l\'entreprise'
-            },
-            valeurs: {
-              type: 'object',
-              description: 'Valeurs de l\'entreprise'
-            },
-            langues: {
-              type: 'array',
-              items: {
-                type: 'string'
-              },
-              description: 'Langues parlées'
-            },
-            site_web: {
-              type: 'string',
-              description: 'Site web'
-            },
-            reseaux_sociaux: {
-              type: 'object',
-              description: 'Liens des réseaux sociaux'
-            },
-            description: {
-              type: 'string',
-              description: 'Description de l\'entreprise'
+            data: {
+              type: 'object'
             }
           }
         },
-        UpdateProfilEntreprise: {
+        Pagination: {
           type: 'object',
           properties: {
-            description_complete: {
-              type: 'string',
-              description: 'Description détaillée'
+            total: {
+              type: 'integer',
+              example: 100
             },
-            ambiance_travail: {
-              type: 'string',
-              description: 'Description de l\'ambiance'
+            page: {
+              type: 'integer',
+              example: 1
             },
-            avantages: {
-              type: 'object',
-              description: 'Avantages offerts'
+            limit: {
+              type: 'integer',
+              example: 10
             },
-            valeurs_entreprise: {
-              type: 'object',
-              description: 'Valeurs détaillées'
+            pages: {
+              type: 'integer',
+              example: 10
+            }
+          }
+        }
+      },
+      responses: {
+        UnauthorizedError: {
+          description: 'Token d\'authentification manquant ou invalide',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/Error'
+              }
             }
           }
         },
-        CreateOffre: {
-          type: 'object',
-          required: ['titre', 'description', 'date_expiration', 'localisation', 'type_contrat'],
-          properties: {
-            titre: {
-              type: 'string',
-              description: 'Titre du poste'
-            },
-            description: {
-              type: 'string',
-              description: 'Description détaillée'
-            },
-            salaire_min: {
-              type: 'number',
-              description: 'Salaire minimum'
-            },
-            salaire_max: {
-              type: 'number',
-              description: 'Salaire maximum'
-            },
-            date_expiration: {
-              type: 'string',
-              format: 'date',
-              description: 'Date d\'expiration'
-            },
-            date_embauche_souhaitee: {
-              type: 'string',
-              format: 'date',
-              description: 'Date d\'embauche souhaitée'
-            },
-            localisation: {
-              type: 'string',
-              description: 'Localisation du poste'
-            },
-            type_contrat: {
-              type: 'string',
-              enum: ['cdi', 'cdd', 'stage', 'freelance', 'autre'],
-              description: 'Type de contrat'
-            },
-            remote: {
-              type: 'string',
-              enum: ['non', 'hybride', 'full_remote'],
-              description: 'Possibilité de télétravail'
-            },
-            horaires: {
-              type: 'string',
-              description: 'Horaires de travail'
-            },
-            tags_competences: {
-              type: 'array',
-              items: {
-                type: 'string'
-              },
-              description: 'Compétences requises'
-            },
-            langues_requises: {
-              type: 'array',
-              items: {
-                type: 'string'
-              },
-              description: 'Langues requises'
-            },
-            experience_requise: {
-              type: 'number',
-              description: 'Expérience requise en années'
-            },
-            entretien_ia_auto: {
-              type: 'boolean',
-              description: 'Activer l\'entretien IA'
-            },
-            urgence: {
-              type: 'boolean',
-              description: 'Recrutement urgent'
+        ForbiddenError: {
+          description: 'Accès refusé - Droits insuffisants',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/Error'
+              }
             }
           }
         },
-        UpdateOffre: {
-          type: 'object',
-          properties: {
-            titre: {
-              type: 'string',
-              description: 'Titre du poste'
-            },
-            description: {
-              type: 'string',
-              description: 'Description détaillée'
-            },
-            salaire_min: {
-              type: 'number',
-              description: 'Salaire minimum'
-            },
-            salaire_max: {
-              type: 'number',
-              description: 'Salaire maximum'
-            },
-            date_expiration: {
-              type: 'string',
-              format: 'date',
-              description: 'Date d\'expiration'
-            },
-            date_embauche_souhaitee: {
-              type: 'string',
-              format: 'date',
-              description: 'Date d\'embauche souhaitée'
-            },
-            localisation: {
-              type: 'string',
-              description: 'Localisation du poste'
-            },
-            type_contrat: {
-              type: 'string',
-              enum: ['cdi', 'cdd', 'stage', 'freelance', 'autre'],
-              description: 'Type de contrat'
-            },
-            remote: {
-              type: 'string',
-              enum: ['non', 'hybride', 'full_remote'],
-              description: 'Possibilité de télétravail'
-            },
-            horaires: {
-              type: 'string',
-              description: 'Horaires de travail'
-            },
-            tags_competences: {
-              type: 'array',
-              items: {
-                type: 'string'
-              },
-              description: 'Compétences requises'
-            },
-            langues_requises: {
-              type: 'array',
-              items: {
-                type: 'string'
-              },
-              description: 'Langues requises'
-            },
-            experience_requise: {
-              type: 'number',
-              description: 'Expérience requise en années'
-            },
-            entretien_ia_auto: {
-              type: 'boolean',
-              description: 'Activer l\'entretien IA'
-            },
-            urgence: {
-              type: 'boolean',
-              description: 'Recrutement urgent'
+        NotFoundError: {
+          description: 'Ressource non trouvée',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/Error'
+              }
+            }
+          }
+        },
+        ValidationError: {
+          description: 'Erreur de validation des données',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/Error'
+              }
+            }
+          }
+        },
+        ServerError: {
+          description: 'Erreur serveur interne',
+          content: {
+            'application/json': {
+              schema: {
+                $ref: '#/components/schemas/Error'
+              }
             }
           }
         }
       }
     }
   },
-  apis: ['./src/routes/*.js'], // Chemins vers les fichiers de routes
+  apis: ['./src/routes/*.js', './src/models/*.js'], // Chemins vers les fichiers de routes et modèles
 };
 
 // Génération des spécifications Swagger
@@ -298,24 +273,6 @@ const specs = swaggerJsdoc(options);
 
 module.exports = {
   specs,
-  swaggerUi
+  swaggerUi,
+  swaggerOptions: swaggerCustomOptions
 };
-
-/**
- * Fonction pour générer la documentation Swagger
- * Peut être utilisée via npm run swagger-autogen
- */
-if (require.main === module) {
-  const swaggerAutogen = require('swagger-autogen')();
-  
-  const outputFile = './swagger-output.json';
-  const endpointsFiles = ['./src/routes/*.js'];
-  
-  swaggerAutogen(outputFile, endpointsFiles, options.definition)
-    .then(() => {
-      console.log('Documentation Swagger générée avec succès!');
-    })
-    .catch((err) => {
-      console.error('Erreur lors de la génération de la documentation Swagger:', err);
-    });
-}
