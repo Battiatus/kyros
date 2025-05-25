@@ -15,6 +15,8 @@ const config = require('./config/config');
 const logger = require('./utils/logger');
 const { specs, swaggerUi } = require('./utils/swagger');
 const { notFound, errorHandler } = require('./middlewares/error');
+const documentationRoutes = require('./routes/documentationRoutes');
+
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
@@ -57,8 +59,21 @@ app.use(morgan('dev'));
 app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 app.use(express.static(path.join(__dirname, '../public')));
 
+const swaggerOptions = {
+  explorer: true,
+  swaggerOptions: {
+    docExpansion: 'none', // ou 'full', 'list'
+    defaultModelsExpandDepth: -1
+  }
+};
+
 // Documentation Swagger
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+// app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+app.use('/api-docs', 
+  swaggerUi.serve, 
+  swaggerUi.setup(specs, swaggerOptions)
+);
+
 
 // Routes API v1
 app.use('/api/v1/auth', authRoutes);
@@ -72,6 +87,7 @@ app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/references', referentRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/ai', aiRoutes);
+app.use('/api/v1/documentation', documentationRoutes);
 
 
 // Page de documentation web
