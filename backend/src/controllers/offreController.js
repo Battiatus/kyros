@@ -6,6 +6,8 @@
 const offreService = require('../services/offreService');
 const matchingService = require('../services/matchingService');
 const catchAsync = require('../utils/catchAsync');
+const MatchingService = require('../services/matchingService');
+
 
 /**
  * Création d'une nouvelle offre
