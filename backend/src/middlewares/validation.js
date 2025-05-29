@@ -94,7 +94,6 @@ exports.createOffreSchema = Joi.object({
   horaires: Joi.string().allow('').trim(),
   tags_competences: Joi.array().items(Joi.string()).default([]),
   langues_requises: Joi.array().items(Joi.string()).default([]),
-  experience_requise: Joi.number().integer().min(0).default(0),
   entretien_ia_auto: Joi.boolean().default(false),
   urgence: Joi.boolean().default(false)
 });
