@@ -43,7 +43,7 @@ const offreSchema = new Schema(
     },
     date_expiration: {
       type: Date,
-      required: true
+      // required: true
     },
     date_embauche_souhaitee: {
       type: Date
@@ -74,8 +74,7 @@ const offreSchema = new Schema(
       default: []
     },
     experience_requise: {
-      type: Number, // En années
-      default: 0
+          type: String
     },
     entretien_ia_auto: {
       type: Boolean,
