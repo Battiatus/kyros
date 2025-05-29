@@ -2,9 +2,9 @@
  * Slice Redux pour les offres d'emploi
  */
 
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../utils/api';
-import { toast } from 'react-toastify';
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import api from "../../utils/api";
+import { toast } from "react-toastify";
 
 // État initial
 const initialState = {
@@ -24,14 +24,15 @@ const initialState = {
 
 // Thunk pour récupérer les offres avec filtres
 export const fetchOffres = createAsyncThunk(
-  'offre/fetchOffres',
+  "offre/fetchOffres",
   async (params, { rejectWithValue }) => {
     try {
-      const response = await api.get('/jobs', { params });
+      const response = await api.get("/jobs", { params });
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Erreur lors de la récupération des offres'
+        error.response?.data?.message ||
+          "Erreur lors de la récupération des offres"
       );
     }
   }
@@ -39,14 +40,15 @@ export const fetchOffres = createAsyncThunk(
 
 // Thunk pour récupérer les offres suggérées
 export const fetchSuggestedOffres = createAsyncThunk(
-  'offre/fetchSuggestedOffres',
+  "offre/fetchSuggestedOffres",
   async (params, { rejectWithValue }) => {
     try {
-      const response = await api.get('/jobs/suggested', { params });
+      const response = await api.get("/jobs/suggested", { params });
       return response.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Erreur lors de la récupération des suggestions'
+        error.response?.data?.message ||
+          "Erreur lors de la récupération des suggestions"
       );
     }
   }
@@ -54,14 +56,15 @@ export const fetchSuggestedOffres = createAsyncThunk(
 
 // Thunk pour récupérer une offre par ID
 export const fetchOffreById = createAsyncThunk(
-  'offre/fetchOffreById',
+  "offre/fetchOffreById",
   async (offreId, { rejectWithValue }) => {
     try {
       const response = await api.get(`/jobs/${offreId}`);
       return response.data.data.offre;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Erreur lors de la récupération de l\'offre'
+        error.response?.data?.message ||
+          "Erreur lors de la récupération de l'offre"
       );
     }
   }
@@ -69,15 +72,15 @@ export const fetchOffreById = createAsyncThunk(
 
 // Thunk pour créer une offre
 export const createOffre = createAsyncThunk(
-  'offre/createOffre',
+  "offre/createOffre",
   async (offreData, { rejectWithValue }) => {
     try {
-      const response = await api.post('/jobs', offreData);
-      toast.success('Offre créée avec succès');
+      const response = await api.post("/jobs", offreData);
+      toast.success("Offre créée avec succès");
       return response.data.data.offre;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Erreur lors de la création de l\'offre'
+        error.response?.data?.message || "Erreur lors de la création de l'offre"
       );
     }
   }
@@ -85,15 +88,16 @@ export const createOffre = createAsyncThunk(
 
 // Thunk pour mettre à jour une offre
 export const updateOffre = createAsyncThunk(
-  'offre/updateOffre',
+  "offre/updateOffre",
   async ({ offreId, offreData }, { rejectWithValue }) => {
     try {
       const response = await api.put(`/jobs/${offreId}`, offreData);
-      toast.success('Offre mise à jour avec succès');
+      toast.success("Offre mise à jour avec succès");
       return response.data.data.offre;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Erreur lors de la mise à jour de l\'offre'
+        error.response?.data?.message ||
+          "Erreur lors de la mise à jour de l'offre"
       );
     }
   }
@@ -101,15 +105,15 @@ export const updateOffre = createAsyncThunk(
 
 // Thunk pour clôturer une offre
 export const closeOffre = createAsyncThunk(
-  'offre/closeOffre',
+  "offre/closeOffre",
   async (offreId, { rejectWithValue }) => {
     try {
       const response = await api.put(`/jobs/${offreId}/close`);
-      toast.success('Offre clôturée avec succès');
+      toast.success("Offre clôturée avec succès");
       return response.data.data.offre;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Erreur lors de la clôture de l\'offre'
+        error.response?.data?.message || "Erreur lors de la clôture de l'offre"
       );
     }
   }
@@ -117,15 +121,16 @@ export const closeOffre = createAsyncThunk(
 
 // Thunk pour optimiser une offre avec l'IA
 export const optimizeOffre = createAsyncThunk(
-  'offre/optimizeOffre',
+  "offre/optimizeOffre",
   async (offreId, { rejectWithValue }) => {
     try {
       const response = await api.post(`/jobs/${offreId}/optimize`);
-      toast.success('Offre optimisée avec succès');
+      toast.success("Offre optimisée avec succès");
       return response.data.data.offre;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Erreur lors de l\'optimisation de l\'offre'
+        error.response?.data?.message ||
+          "Erreur lors de l'optimisation de l'offre"
       );
     }
   }
@@ -133,14 +138,32 @@ export const optimizeOffre = createAsyncThunk(
 
 // Thunk pour récupérer les statistiques d'une offre
 export const fetchOffreStats = createAsyncThunk(
-  'offre/fetchOffreStats',
+  "offre/fetchOffreStats",
   async (offreId, { rejectWithValue }) => {
     try {
       const response = await api.get(`/jobs/${offreId}/stats`);
       return response.data.data.stats;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message || 'Erreur lors de la récupération des statistiques'
+        error.response?.data?.message ||
+          "Erreur lors de la récupération des statistiques"
+      );
+    }
+  }
+);
+
+// Thunk pour supprimer une offre
+export const deleteOffre = createAsyncThunk(
+  "offre/deleteOffre",
+  async (offreId, { rejectWithValue }) => {
+    try {
+      const response = await api.delete(`/jobs/${offreId}`);
+      toast.success("Offre supprimée avec succès");
+      return offreId;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Erreur lors de la suppression de l'offre"
       );
     }
   }
@@ -148,7 +171,7 @@ export const fetchOffreStats = createAsyncThunk(
 
 // Slice offre
 const offreSlice = createSlice({
-  name: 'offre',
+  name: "offre",
   initialState,
   reducers: {
     clearCurrentOffre: (state) => {
@@ -184,7 +207,7 @@ const offreSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Fetch Suggested Offres
       .addCase(fetchSuggestedOffres.pending, (state) => {
         state.loading = true;
@@ -199,7 +222,7 @@ const offreSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Fetch Offre By Id
       .addCase(fetchOffreById.pending, (state) => {
         state.loading = true;
@@ -213,7 +236,7 @@ const offreSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Create Offre
       .addCase(createOffre.pending, (state) => {
         state.loading = true;
@@ -229,7 +252,7 @@ const offreSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Update Offre
       .addCase(updateOffre.pending, (state) => {
         state.loading = true;
@@ -239,7 +262,7 @@ const offreSlice = createSlice({
         state.loading = false;
         state.currentOffre = action.payload;
         // Mettre à jour l'offre dans la liste
-        state.offres = state.offres.map(offre => 
+        state.offres = state.offres.map((offre) =>
           offre._id === action.payload._id ? action.payload : offre
         );
       })
@@ -247,7 +270,7 @@ const offreSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Close Offre
       .addCase(closeOffre.pending, (state) => {
         state.loading = true;
@@ -257,7 +280,7 @@ const offreSlice = createSlice({
         state.loading = false;
         state.currentOffre = action.payload;
         // Mettre à jour l'offre dans la liste
-        state.offres = state.offres.map(offre => 
+        state.offres = state.offres.map((offre) =>
           offre._id === action.payload._id ? action.payload : offre
         );
       })
@@ -265,7 +288,7 @@ const offreSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Optimize Offre
       .addCase(optimizeOffre.pending, (state) => {
         state.loading = true;
@@ -275,7 +298,7 @@ const offreSlice = createSlice({
         state.loading = false;
         state.currentOffre = action.payload;
         // Mettre à jour l'offre dans la liste
-        state.offres = state.offres.map(offre => 
+        state.offres = state.offres.map((offre) =>
           offre._id === action.payload._id ? action.payload : offre
         );
       })
@@ -283,7 +306,7 @@ const offreSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      
+
       // Fetch Offre Stats
       .addCase(fetchOffreStats.pending, (state) => {
         state.loading = true;
@@ -293,6 +316,21 @@ const offreSlice = createSlice({
         state.loading = false;
         state.stats = action.payload;
       })
+      .addCase(deleteOffre.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteOffre.fulfilled, (state, action) => {
+        state.loading = false;
+        state.offres = state.offres.filter(
+          (offre) => offre._id !== action.payload
+        );
+        state.currentOffre = null;
+      })
+      .addCase(deleteOffre.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
       .addCase(fetchOffreStats.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
@@ -301,7 +339,8 @@ const offreSlice = createSlice({
 });
 
 // Export des actions
-export const { clearCurrentOffre, clearOffreError, resetOffres } = offreSlice.actions;
+export const { clearCurrentOffre, clearOffreError, resetOffres } =
+  offreSlice.actions;
 
 // Export des selectors
 export const selectAllOffres = (state) => state.offre.offres;
