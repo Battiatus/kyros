@@ -1,0 +1,6 @@
+Dans la fonction premuim, donner la pôssiblité d'exporter son cv depuis son profil avec un bouton "Exporter mon CV". Le CV doit être exporté au format PDF et doit contenir les informations suivantes :
+Le profil devra et cv devra être génerer en fonction des informations de l'utilisateur, telles que son nom, prénom, adresse e-mail, numéro de téléphone, expérience professionnelle, formation et compétences.
+
+* ajouter un bouton "discssion vocal avec ia" pour permettre à l'utilisateur de discuter avec l'IA via la voix. L'utilisateur doit pouvoir activer ou désactiver cette fonctionnalité dans les paramètres de son compte.
+* Ajouter un bouton "Partager mon profil" pour permettre à l'utilisateur de partager son profil avec d'autres utilisateurs ou sur les réseaux sociaux. L'utilisateur doit pouvoir choisir les informations qu'il souhaite partager (par exemple, son nom, sa photo de profil, ses compétences, etc.).
+* Rajouter bouton "favoris" pour permettre à l'utilisateur de sauvegarder ses profils préférés. L'utilisateur doit pouvoir accéder à ses favoris depuis son tableau de bord.
