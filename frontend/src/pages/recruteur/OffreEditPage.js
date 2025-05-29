@@ -120,7 +120,7 @@ const OffreEditPage = () => {
   // Validation du formulaire
   const validationSchema = Yup.object({
     titre: Yup.string()
-      .min(5, 'Le titre doit contenir au moins 5 caractères')
+      .min(3, 'Le titre doit contenir au moins 5 caractères')
       .max(100, 'Le titre ne peut pas dépasser 100 caractères')
       .required('Titre requis'),
     type_contrat: Yup.string().required('Type de contrat requis'),
