@@ -14,7 +14,7 @@ La solution est structurée en trois parties principales:
 ## Prérequis
 
 - Node.js (v16+)
-- MongoDB (v5+)
+- MongoDB 
 - Docker et Docker Compose (pour déploiement conteneurisé)
 
 ## Installation et démarrage
