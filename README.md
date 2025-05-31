@@ -4,7 +4,7 @@ Hereoz est une plateforme clé en main destinée au secteur de l'hôtellerie-res
 
 ## Architecture
 
-La solution est structurée en trois parties principales:
+La solution est structurée en quatre parties principales:
 
 - **Backend**: API Node.js avec Express et MongoDB
 - **Frontend**: Application React pour les candidats et recruteurs
