@@ -9,6 +9,7 @@ La solution est structurée en quatre parties principales:
 - **Backend**: API Node.js avec Express et MongoDB
 - **Frontend**: Application React pour les candidats et recruteurs
 - **Admin**: Backoffice React pour l'administration de la plateforme
+- **App mobile**
 
 ## Prérequis
 
