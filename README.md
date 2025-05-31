@@ -23,7 +23,7 @@ La solution est structurée en trois parties principales:
 
 1. Cloner le dépôt:
    ```bash
-   git clone https://github.com/votreorganisation/hereoz.git
+   git clone https://github.com/battiatus/hereoz.git
    cd hereoz
    ```
 
