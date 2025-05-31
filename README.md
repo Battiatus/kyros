@@ -15,7 +15,7 @@ La solution est structurée en trois parties principales:
 
 - Node.js
 - MongoDB 
-- Docker et Docker Compose (pour déploiement conteneurisé)
+- Docker et Docker Compose (pour déploiement contene
 
 ## Installation et démarrage
 
