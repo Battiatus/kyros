@@ -1,7 +1,3 @@
-/**
- * Configuration du store Redux
- */
-
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
@@ -13,14 +9,14 @@ import offreReducer from './slices/offreSlice';
 import candidatureReducer from './slices/candidatureSlice';
 import entrepriseReducer from './slices/entrepriseSlice';
 import chatReducer from './slices/chatSlice';
-import uiReducer from './slices/uiSlice';
 import entretienReducer from './slices/entretienSlice';
+import uiReducer from './slices/uiSlice';
 
 // Configuration de la persistence
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['auth'], // Seul le state auth sera persisté
+  whitelist: ['auth', 'ui'], // Seuls les states auth et ui seront persistés
 };
 
 // Combinaison des reducers
@@ -31,8 +27,8 @@ const rootReducer = combineReducers({
   candidature: candidatureReducer,
   entreprise: entrepriseReducer,
   chat: chatReducer,
-  ui: uiReducer,
   entretien: entretienReducer,
+  ui: uiReducer,
 });
 
 // Application de la persistence
