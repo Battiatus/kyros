@@ -1,21 +1,21 @@
 
 # Hereoz - Plateforme de Recrutement en Hôtellerie-Restauration
-
 Hereoz est une plateforme clé en main destinée au secteur de l'hôtellerie-restauration (hôtels, bars, restaurants) qui met en relation, à l'échelle mondiale, des candidats (demandeurs d'emploi, freelances, extras) à la recherche d'opportunités et des entreprises souhaitant recruter rapidement et efficacement.
 
 ## Architecture
 
-La solution est structurée en trois parties principales:
+La solution est structurée en quatre parties principales:
 
 - **Backend**: API Node.js avec Express et MongoDB
 - **Frontend**: Application React pour les candidats et recruteurs
 - **Admin**: Backoffice React pour l'administration de la plateforme
+- **App mobile**
 
 ## Prérequis
 
-- Node.js (v16+)
-- MongoDB (v5+)
-- Docker et Docker Compose (pour déploiement conteneurisé)
+- Node.js
+- MongoDB 
+- Docker et Docker Compose  
 
 ## Installation et démarrage
 
@@ -23,7 +23,7 @@ La solution est structurée en trois parties principales:
 
 1. Cloner le dépôt:
    ```bash
-   git clone https://github.com/votreorganisation/hereoz.git
+   git clone https://github.com/battiatus/hereoz.git
    cd hereoz
    ```
 
