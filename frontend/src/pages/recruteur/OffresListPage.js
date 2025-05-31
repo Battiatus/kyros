@@ -54,6 +54,7 @@ import {
   selectOffreLoading, 
   selectOffrePagination
 } from '../../redux/slices/offreSlice';
+import { updateFilters, selectFilters } from '../../redux/slices/uiSlice';
 import OffresList from '../../components/offres/OffresList';
 import Loader from '../../components/common/Loader';
 
@@ -65,7 +66,6 @@ const OffresListPage = () => {
   const navigate = useNavigate();
   
   const [tabValue, setTabValue] = useState(0);
-  const [search, setSearch] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [offreToDelete, setOffreToDelete] = useState(null);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
@@ -77,27 +77,65 @@ const OffresListPage = () => {
   const offres = useSelector(selectAllOffres);
   const loading = useSelector(selectOffreLoading);
   const pagination = useSelector(selectOffrePagination);
+  const filters = useSelector(selectFilters('offres'));
   
   // Charger les offres
   useEffect(() => {
-    dispatch(fetchOffres({ page: 1, limit: 10 }));
-  }, [dispatch]);
+    const params = {
+      page: 1,
+      limit: 10,
+      search: filters.search || '',
+      status: getStatusFilterByTab(tabValue),
+      sortBy: filters.sortField,
+      order: filters.sortOrder,
+    };
+    
+    dispatch(fetchOffres(params));
+  }, [dispatch, tabValue, filters.sortField, filters.sortOrder]);
+  
+  // Fonction pour obtenir le filtre de statut en fonction de l'onglet
+  const getStatusFilterByTab = (tab) => {
+    switch (tab) {
+      case 1:
+        return 'active';
+      case 2:
+        return 'fermee,pourvue';
+      default:
+        return 'all';
+    }
+  };
   
   // Changement d'onglet
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     
-    // Filtrer les offres selon l'onglet
-    let status = 'all';
-    if (newValue === 1) status = 'active';
-    if (newValue === 2) status = 'fermee,pourvue';
-    
-    dispatch(fetchOffres({ page: 1, limit: 10, status }));
+    // Mettre à jour le filtre de statut en fonction de l'onglet
+    dispatch(updateFilters({
+      category: 'offres',
+      filters: { status: getStatusFilterByTab(newValue) }
+    }));
   };
   
   // Recherche d'offres
   const handleSearch = () => {
-    dispatch(fetchOffres({ page: 1, limit: 10, search }));
+    const params = {
+      page: 1,
+      limit: 10,
+      search: filters.search,
+      status: getStatusFilterByTab(tabValue),
+      sortBy: filters.sortField,
+      order: filters.sortOrder,
+    };
+    
+    dispatch(fetchOffres(params));
+  };
+  
+  // Mise à jour de la recherche
+  const handleSearchChange = (e) => {
+    dispatch(updateFilters({
+      category: 'offres',
+      filters: { search: e.target.value }
+    }));
   };
   
   // Ouverture du dialog de suppression
@@ -158,14 +196,13 @@ const OffresListPage = () => {
     }
   };
   
-  // Filtrer les offres selon la recherche locale
-  const filteredOffres = offres.filter(offre => 
-    offre.titre.toLowerCase().includes(search.toLowerCase()) ||
-    offre.localisation?.toLowerCase().includes(search.toLowerCase())
-  );
-  
   // Rendu en mode grille
   const renderGridView = () => {
+    const filteredOffres = offres.filter(offre => 
+      offre.titre.toLowerCase().includes(filters.search.toLowerCase()) ||
+      offre.localisation?.toLowerCase().includes(filters.search.toLowerCase())
+    );
+    
     return (
       <Grid container spacing={2}>
         {filteredOffres.map(offre => (
@@ -296,8 +333,8 @@ const OffresListPage = () => {
           <TextField
             placeholder="Rechercher une offre..."
             size="small"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={filters.search}
+            onChange={handleSearchChange}
             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
             InputProps={{
               startAdornment: (
@@ -330,7 +367,7 @@ const OffresListPage = () => {
         <Box display="flex" justifyContent="center" p={4}>
           <CircularProgress />
         </Box>
-      ) : filteredOffres.length === 0 ? (
+      ) : offres.length === 0 ? (
         <Paper elevation={1} sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1" color="text.secondary" paragraph>
             Aucune offre ne correspond à vos critères.
@@ -347,7 +384,10 @@ const OffresListPage = () => {
         <Paper elevation={1}>
           {viewMode === 'list' ? (
             <OffresList 
-              offres={filteredOffres} 
+              offres={offres.filter(offre => 
+                offre.titre.toLowerCase().includes(filters.search.toLowerCase()) ||
+                offre.localisation?.toLowerCase().includes(filters.search.toLowerCase())
+              )} 
               onDelete={handleDeleteDialogOpen}
               onClose={handleCloseDialogOpen}
             />
