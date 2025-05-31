@@ -1,7 +1,3 @@
-/**
- * Slice Redux pour le chat
- */
-
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../utils/api';
 import { toast } from 'react-toastify';
@@ -13,6 +9,7 @@ const initialState = {
   messages: [],
   loading: false,
   error: null,
+  messageLoading: false,
 };
 
 // Thunk pour récupérer les conversations
@@ -21,27 +18,25 @@ export const fetchConversations = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await api.get('/conversations');
-      return response.data.data.conversations;
+      return response.data.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message ||
-          'Erreur lors de la récupération des conversations'
+        error.response?.data?.message || 'Erreur lors de la récupération des conversations'
       );
     }
   }
 );
 
-// Thunk pour récupérer une conversation par ID
-export const fetchConversationById = createAsyncThunk(
-  'chat/fetchConversationById',
+// Thunk pour récupérer une conversation
+export const fetchConversation = createAsyncThunk(
+  'chat/fetchConversation',
   async (conversationId, { rejectWithValue }) => {
     try {
       const response = await api.get(`/conversations/${conversationId}`);
-      return response.data.data.conversation;
+      return response.data.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message ||
-          'Erreur lors de la récupération de la conversation'
+        error.response?.data?.message || 'Erreur lors de la récupération de la conversation'
       );
     }
   }
@@ -53,11 +48,13 @@ export const fetchMessages = createAsyncThunk(
   async (conversationId, { rejectWithValue }) => {
     try {
       const response = await api.get(`/conversations/${conversationId}/messages`);
-      return response.data.data.messages;
+      return {
+        conversationId,
+        messages: response.data.data
+      };
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message ||
-          'Erreur lors de la récupération des messages'
+        error.response?.data?.message || 'Erreur lors de la récupération des messages'
       );
     }
   }
@@ -66,14 +63,17 @@ export const fetchMessages = createAsyncThunk(
 // Thunk pour envoyer un message
 export const sendMessage = createAsyncThunk(
   'chat/sendMessage',
-  async ({ conversationId, content }, { rejectWithValue }) => {
+  async ({ conversationId, content, type = 'texte' }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/messages', { conversation_id: conversationId, content });
-      return response.data.data.message;
+      const response = await api.post('/messages', {
+        conversation_id: conversationId,
+        contenu: content,
+        type
+      });
+      return response.data.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message ||
-          'Erreur lors de l\'envoi du message'
+        error.response?.data?.message || 'Erreur lors de l\'envoi du message'
       );
     }
   }
@@ -82,30 +82,32 @@ export const sendMessage = createAsyncThunk(
 // Thunk pour créer une nouvelle conversation
 export const createConversation = createAsyncThunk(
   'chat/createConversation',
-  async ({ candidat_id, offre_id }, { rejectWithValue }) => {
+  async ({ candidatId, recruteurId, offreId }, { rejectWithValue }) => {
     try {
-      const response = await api.post('/conversations', { candidat_id, offre_id });
-      return response.data.data.conversation;
+      const response = await api.post('/conversations', {
+        candidat_id: candidatId,
+        recruteur_id: recruteurId,
+        offre_id: offreId
+      });
+      return response.data.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message ||
-          'Erreur lors de la création de la conversation'
+        error.response?.data?.message || 'Erreur lors de la création de la conversation'
       );
     }
   }
 );
 
-// Thunk pour marquer les messages comme lus
-export const markMessagesAsRead = createAsyncThunk(
-  'chat/markMessagesAsRead',
-  async (conversationId, { rejectWithValue }) => {
+// Thunk pour marquer un message comme lu
+export const markMessageAsRead = createAsyncThunk(
+  'chat/markMessageAsRead',
+  async (messageId, { rejectWithValue }) => {
     try {
-      const response = await api.put(`/conversations/${conversationId}/read`);
-      return response.data.data.conversation;
+      const response = await api.put(`/messages/${messageId}/read`);
+      return response.data.data;
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.message ||
-          'Erreur lors du marquage des messages comme lus'
+        error.response?.data?.message || 'Erreur lors du marquage du message comme lu'
       );
     }
   }
@@ -124,7 +126,7 @@ const chatSlice = createSlice({
       state.error = null;
     },
     addLocalMessage: (state, action) => {
-      // Pour ajouter instantanément un message local avant confirmation du serveur
+      // Ajouter un message local (avant la confirmation du serveur)
       state.messages.push(action.payload);
     },
   },
@@ -143,65 +145,58 @@ const chatSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-
-      // Fetch Conversation By Id
-      .addCase(fetchConversationById.pending, (state) => {
+      
+      // Fetch Conversation
+      .addCase(fetchConversation.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchConversationById.fulfilled, (state, action) => {
+      .addCase(fetchConversation.fulfilled, (state, action) => {
         state.loading = false;
         state.currentConversation = action.payload;
       })
-      .addCase(fetchConversationById.rejected, (state, action) => {
+      .addCase(fetchConversation.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-
+      
       // Fetch Messages
       .addCase(fetchMessages.pending, (state) => {
-        state.loading = true;
+        state.messageLoading = true;
         state.error = null;
       })
       .addCase(fetchMessages.fulfilled, (state, action) => {
-        state.loading = false;
-        state.messages = action.payload;
+        state.messageLoading = false;
+        state.messages = action.payload.messages;
       })
       .addCase(fetchMessages.rejected, (state, action) => {
-        state.loading = false;
+        state.messageLoading = false;
         state.error = action.payload;
       })
-
+      
       // Send Message
       .addCase(sendMessage.pending, (state) => {
-        state.loading = true;
+        state.messageLoading = true;
         state.error = null;
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
-        state.loading = false;
-        state.messages.push(action.payload);
+        state.messageLoading = false;
+        // Remplacer le message local par la version du serveur
+        const messageIndex = state.messages.findIndex(m => 
+          m.tempId === action.meta.arg.tempId
+        );
         
-        // Mettre à jour le dernier message dans la conversation
-        if (state.currentConversation) {
-          state.currentConversation.lastMessage = action.payload;
+        if (messageIndex !== -1) {
+          state.messages[messageIndex] = action.payload;
+        } else {
+          state.messages.push(action.payload);
         }
-        
-        // Mettre à jour la liste des conversations
-        state.conversations = state.conversations.map((conversation) => {
-          if (conversation.id === action.payload.conversation_id) {
-            return {
-              ...conversation,
-              lastMessage: action.payload
-            };
-          }
-          return conversation;
-        });
       })
       .addCase(sendMessage.rejected, (state, action) => {
-        state.loading = false;
+        state.messageLoading = false;
         state.error = action.payload;
       })
-
+      
       // Create Conversation
       .addCase(createConversation.pending, (state) => {
         state.loading = true;
@@ -210,43 +205,21 @@ const chatSlice = createSlice({
       .addCase(createConversation.fulfilled, (state, action) => {
         state.loading = false;
         state.currentConversation = action.payload;
-        state.conversations = [action.payload, ...state.conversations];
+        state.conversations.push(action.payload);
       })
       .addCase(createConversation.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       })
-
-      // Mark Messages As Read
-      .addCase(markMessagesAsRead.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(markMessagesAsRead.fulfilled, (state, action) => {
-        state.loading = false;
-        state.currentConversation = action.payload;
-        
-        // Mettre à jour tous les messages non lus
-        state.messages = state.messages.map(message => ({
-          ...message,
-          lu: true,
-          date_lecture: new Date().toISOString()
-        }));
-        
-        // Mettre à jour la liste des conversations
-        state.conversations = state.conversations.map((conversation) => {
-          if (conversation.id === action.payload.id) {
-            return {
-              ...conversation,
-              unreadCount: 0
-            };
-          }
-          return conversation;
-        });
-      })
-      .addCase(markMessagesAsRead.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload;
+      
+      // Mark Message as Read
+      .addCase(markMessageAsRead.fulfilled, (state, action) => {
+        // Mettre à jour le statut de lecture du message
+        const messageIndex = state.messages.findIndex(m => m.id === action.payload.id);
+        if (messageIndex !== -1) {
+          state.messages[messageIndex].lu = true;
+          state.messages[messageIndex].date_lecture = action.payload.date_lecture;
+        }
       });
   },
 });
@@ -259,6 +232,7 @@ export const selectAllConversations = (state) => state.chat.conversations;
 export const selectCurrentConversation = (state) => state.chat.currentConversation;
 export const selectMessages = (state) => state.chat.messages;
 export const selectChatLoading = (state) => state.chat.loading;
+export const selectMessageLoading = (state) => state.chat.messageLoading;
 export const selectChatError = (state) => state.chat.error;
 
 export default chatSlice.reducer;
