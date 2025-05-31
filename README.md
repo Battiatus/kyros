@@ -1,5 +1,5 @@
 
-# Hereoz 
+# Hereoz Plateforme de Recrutement en Hôtellerie-Restauration
 Hereoz est une plateforme clé en main destinée au secteur de l'hôtellerie-restauration (hôtels, bars, restaurants) qui met en relation, à l'échelle mondiale, des candidats (demandeurs d'emploi, freelances, extras) à la recherche d'opportunités et des entreprises souhaitant recruter rapidement et efficacement.
 
 ## Architecture
