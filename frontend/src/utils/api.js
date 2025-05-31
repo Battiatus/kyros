@@ -1,7 +1,3 @@
-/**
- * Utilitaire pour les appels API
- */
-
 import axios from 'axios';
 import config from '../config/config';
 import { toast } from 'react-toastify';
