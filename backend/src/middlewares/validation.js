@@ -82,7 +82,7 @@ exports.createEntrepriseSchema = Joi.object({
  * Schéma de validation de création d'offre
  */
 exports.createOffreSchema = Joi.object({
-  titre: Joi.string().required().trim().min(5).max(100),
+  titre: Joi.string().required().trim().min(3).max(100),
   description: Joi.string().required().trim().min(20),
   salaire_min: Joi.number().min(0),
   salaire_max: Joi.number().min(Joi.ref('salaire_min')),
@@ -94,6 +94,7 @@ exports.createOffreSchema = Joi.object({
   horaires: Joi.string().allow('').trim(),
   tags_competences: Joi.array().items(Joi.string()).default([]),
   langues_requises: Joi.array().items(Joi.string()).default([]),
+  experience_requise: Joi.string().allow('').trim(),
   entretien_ia_auto: Joi.boolean().default(false),
   urgence: Joi.boolean().default(false)
 });
