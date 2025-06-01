@@ -30,7 +30,7 @@ import {
   DialogActions,
   TextField,
   Grid,
-   ListItemIcon,
+  ListItemIcon,
   CircularProgress,
   useTheme,
 } from '@mui/material';
@@ -52,6 +52,16 @@ import {
   Sort as SortIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { 
+  fetchCandidatures, 
+  updateCandidatureStatus, 
+  addNoteToCandidature,
+  selectAllCandidatures, 
+  selectCandidatureLoading, 
+  selectCandidatureError 
+} from '../../redux/slices/candidatureSlice';
+import { updateFilters, selectFilters } from '../../redux/slices/uiSlice';
+import { toast } from 'react-toastify';
 
 /**
  * Page de gestion des candidatures
@@ -63,12 +73,6 @@ const CandidaturesPage = () => {
   
   // États pour la gestion de l'interface
   const [tabValue, setTabValue] = useState(0);
-  const [candidatures, setCandidatures] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sortField, setSortField] = useState('date');
-  const [sortOrder, setSortOrder] = useState('desc');
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedCandidature, setSelectedCandidature] = useState(null);
   const [openStatusDialog, setOpenStatusDialog] = useState(false);
@@ -78,6 +82,11 @@ const CandidaturesPage = () => {
   const [newNote, setNewNote] = useState('');
   const [rejectReason, setRejectReason] = useState('');
   const [menuCandidatureId, setMenuCandidatureId] = useState(null);
+  
+  const candidatures = useSelector(selectAllCandidatures);
+  const loading = useSelector(selectCandidatureLoading);
+  const error = useSelector(selectCandidatureError);
+  const filters = useSelector(selectFilters('candidatures'));
   
   // Statuts possibles des candidatures
   const statuses = [
@@ -91,278 +100,90 @@ const CandidaturesPage = () => {
     { value: 'rejected', label: 'Refusé', color: 'error' },
   ];
   
-  // Charger les candidatures (simulées pour l'exemple)
+  // Charger les candidatures
   useEffect(() => {
-    // Dans une version réelle, nous ferions un appel API
-    const fetchCandidatures = async () => {
-      setLoading(true);
-      
-      // Simulation de délai réseau
-      setTimeout(() => {
-        // Données fictives pour l'exemple
-        const mockCandidatures = [
-          {
-            id: 1,
-            candidat: {
-              id: 101,
-              prenom: 'Marie',
-              nom: 'Dupont',
-              photo: null,
-              titre: 'Chef de Rang',
-              email: 'marie.dupont@email.com',
-              telephone: '06 12 34 56 78',
-              matchScore: 92,
-            },
-            offre: {
-              id: 201,
-              titre: 'Chef de Rang - Restaurant Le Gourmet',
-              localisation: 'Paris',
-            },
-            status: 'new',
-            date: '2025-05-28T10:30:00',
-            messagePerso: 'Je suis très intéressée par votre offre et je pense que mon expérience correspondrait parfaitement au poste.',
-            notes: '',
-            entretiens: [],
-          },
-          {
-            id: 2,
-            candidat: {
-              id: 102,
-              prenom: 'Thomas',
-              nom: 'Martin',
-              photo: null,
-              titre: 'Barman',
-              email: 'thomas.martin@email.com',
-              telephone: '06 23 45 67 89',
-              matchScore: 85,
-            },
-            offre: {
-              id: 202,
-              titre: 'Barman expérimenté - Bar Le Cocktail',
-              localisation: 'Lyon',
-            },
-            status: 'viewed',
-            date: '2025-05-27T15:45:00',
-            messagePerso: 'Passionné de mixologie, je souhaite mettre mes compétences au service de votre établissement.',
-            notes: 'Profil intéressant, expérience dans des bars similaires',
-            entretiens: [],
-          },
-          {
-            id: 3,
-            candidat: {
-              id: 103,
-              prenom: 'Sophie',
-              nom: 'Bernard',
-              photo: null,
-              titre: 'Serveuse',
-              email: 'sophie.bernard@email.com',
-              telephone: '06 34 56 78 90',
-              matchScore: 78,
-            },
-            offre: {
-              id: 201,
-              titre: 'Chef de Rang - Restaurant Le Gourmet',
-              localisation: 'Paris',
-            },
-            status: 'contacted',
-            date: '2025-05-26T09:15:00',
-            messagePerso: 'Je suis actuellement en poste mais souhaite évoluer dans un établissement comme le vôtre.',
-            notes: 'A répondu rapidement au message, entretien à prévoir',
-            entretiens: [],
-          },
-          {
-            id: 4,
-            candidat: {
-              id: 104,
-              prenom: 'Lucas',
-              nom: 'Petit',
-              photo: null,
-              titre: 'Second de cuisine',
-              email: 'lucas.petit@email.com',
-              telephone: '06 45 67 89 01',
-              matchScore: 72,
-            },
-            offre: {
-              id: 203,
-              titre: 'Second de cuisine - Restaurant Le Gourmet',
-              localisation: 'Paris',
-            },
-            status: 'interview',
-            date: '2025-05-25T14:20:00',
-            messagePerso: 'Je recherche un nouveau défi culinaire et votre établissement correspond à mes aspirations.',
-            notes: 'Entretien prévu le 30/05 à 14h',
-            entretiens: [
-              {
-                id: 301,
-                date: '2025-05-30T14:00:00',
-                type: 'video',
-                status: 'scheduled',
-              },
-            ],
-          },
-          {
-            id: 5,
-            candidat: {
-              id: 105,
-              prenom: 'Emma',
-              nom: 'Leroy',
-              photo: null,
-              titre: 'Réceptionniste',
-              email: 'emma.leroy@email.com',
-              telephone: '06 56 78 90 12',
-              matchScore: 94,
-            },
-            offre: {
-              id: 204,
-              titre: 'Réceptionniste - Hôtel Le Palace',
-              localisation: 'Nice',
-            },
-            status: 'offer',
-            date: '2025-05-24T11:10:00',
-            messagePerso: 'Trilingue avec expérience en hôtellerie de luxe, je serais ravie de rejoindre votre équipe.',
-            notes: 'Très bon entretien, offre envoyée le 27/05',
-            entretiens: [
-              {
-                id: 302,
-                date: '2025-05-26T10:00:00',
-                type: 'in_person',
-                status: 'completed',
-              },
-            ],
-          },
-          {
-            id: 6,
-            candidat: {
-              id: 106,
-              prenom: 'Antoine',
-              nom: 'Dubois',
-              photo: null,
-              titre: 'Chef de partie',
-              email: 'antoine.dubois@email.com',
-              telephone: '06 67 89 01 23',
-              matchScore: 88,
-            },
-            offre: {
-              id: 203,
-              titre: 'Second de cuisine - Restaurant Le Gourmet',
-              localisation: 'Paris',
-            },
-            status: 'hired',
-            date: '2025-05-20T09:30:00',
-            messagePerso: 'Je souhaite apporter mon savoir-faire et ma créativité à votre brigade.',
-            notes: 'Embauché le 28/05, début le 15/06',
-            entretiens: [
-              {
-                id: 303,
-                date: '2025-05-22T11:00:00',
-                type: 'in_person',
-                status: 'completed',
-              },
-              {
-                id: 304,
-                date: '2025-05-25T14:30:00',
-                type: 'in_person',
-                status: 'completed',
-              },
-            ],
-          },
-          {
-            id: 7,
-            candidat: {
-              id: 107,
-              prenom: 'Julien',
-              nom: 'Moreau',
-              photo: null,
-              titre: 'Sommelier',
-              email: 'julien.moreau@email.com',
-              telephone: '06 78 90 12 34',
-              matchScore: 65,
-            },
-            offre: {
-              id: 205,
-              titre: 'Sommelier - Restaurant Le Gourmet',
-              localisation: 'Paris',
-            },
-            status: 'rejected',
-            date: '2025-05-18T16:40:00',
-            messagePerso: 'Passionné par l\'univers du vin, je souhaite mettre mes connaissances à votre service.',
-            notes: 'Refusé car expérience insuffisante',
-            entretiens: [],
-            rejectReason: 'Profil intéressant mais expérience insuffisante pour le poste',
-          },
-        ];
-        
-        setCandidatures(mockCandidatures);
-        setLoading(false);
-      }, 1000);
+    const params = {
+      page: 1,
+      limit: 50,
+      status: getStatusFilterByTab(tabValue),
+      search: filters.search || '',
+      sortBy: filters.sortField || 'date',
+      order: filters.sortOrder || 'desc',
     };
     
-    fetchCandidatures();
-  }, []);
+    dispatch(fetchCandidatures(params));
+  }, [dispatch, tabValue, filters.search, filters.sortField, filters.sortOrder]);
   
-  // Changer l'onglet
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
+  // Fonction pour obtenir le filtre de statut en fonction de l'onglet
+  const getStatusFilterByTab = (tab) => {
+    switch (tab) {
+      case 1:
+        return 'new,viewed';
+      case 2:
+        return 'contacted,interview,offer';
+      case 3:
+        return 'hired,rejected';
+      default:
+        return 'all';
+    }
   };
   
-  // Filtrer les candidatures selon l'onglet, la recherche et le filtre de statut
-  const filteredCandidatures = candidatures.filter(candidature => {
-    // Filtre par onglet
-    if (tabValue === 1 && !['new', 'viewed'].includes(candidature.status)) {
-      return false;
-    }
-    if (tabValue === 2 && !['contacted', 'interview', 'offer'].includes(candidature.status)) {
-      return false;
-    }
-    if (tabValue === 3 && !['hired', 'rejected'].includes(candidature.status)) {
-      return false;
-    }
+  // Changement d'onglet
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
     
-    // Filtre par statut
-    if (statusFilter !== 'all' && candidature.status !== statusFilter) {
-      return false;
-    }
-    
-    // Filtre par recherche
-    if (search) {
-      const searchLower = search.toLowerCase();
-      return (
-        candidature.candidat.prenom.toLowerCase().includes(searchLower) ||
-        candidature.candidat.nom.toLowerCase().includes(searchLower) ||
-        candidature.candidat.titre.toLowerCase().includes(searchLower) ||
-        candidature.offre.titre.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    return true;
-  });
+    // Mettre à jour le filtre de statut en fonction de l'onglet
+    dispatch(updateFilters({
+      category: 'candidatures',
+      filters: { status: getStatusFilterByTab(newValue) }
+    }));
+  };
   
-  // Trier les candidatures
-  const sortedCandidatures = [...filteredCandidatures].sort((a, b) => {
-    if (sortField === 'date') {
-      return sortOrder === 'desc'
-        ? new Date(b.date) - new Date(a.date)
-        : new Date(a.date) - new Date(b.date);
+  // Mise à jour de la recherche
+  const handleSearchChange = (e) => {
+    dispatch(updateFilters({
+      category: 'candidatures',
+      filters: { search: e.target.value }
+    }));
+  };
+  
+  // Mise à jour du filtre de statut
+  const handleStatusChange = (e) => {
+    dispatch(updateFilters({
+      category: 'candidatures',
+      filters: { status: e.target.value }
+    }));
+  };
+  
+  // Changer le tri
+  const handleSortChange = (field) => {
+    const currentField = filters.sortField || 'date';
+    const currentOrder = filters.sortOrder || 'desc';
+    
+    if (currentField === field) {
+      dispatch(updateFilters({
+        category: 'candidatures',
+        filters: { 
+          sortField: field,
+          sortOrder: currentOrder === 'asc' ? 'desc' : 'asc'
+        }
+      }));
+    } else {
+      dispatch(updateFilters({
+        category: 'candidatures',
+        filters: { 
+          sortField: field,
+          sortOrder: 'desc'
+        }
+      }));
     }
-    if (sortField === 'name') {
-      const nameA = `${a.candidat.nom} ${a.candidat.prenom}`.toLowerCase();
-      const nameB = `${b.candidat.nom} ${b.candidat.prenom}`.toLowerCase();
-      return sortOrder === 'desc'
-        ? nameB.localeCompare(nameA)
-        : nameA.localeCompare(nameB);
-    }
-    if (sortField === 'score') {
-      return sortOrder === 'desc'
-        ? b.candidat.matchScore - a.candidat.matchScore
-        : a.candidat.matchScore - b.candidat.matchScore;
-    }
-    return 0;
-  });
+  };
   
   // Ouvrir le menu contextuel
   const handleMenuOpen = (event, candidatureId) => {
     setAnchorEl(event.currentTarget);
     setMenuCandidatureId(candidatureId);
+    setSelectedCandidature(candidatures.find(c => c.id === candidatureId));
   };
   
   // Fermer le menu contextuel
@@ -384,7 +205,7 @@ const CandidaturesPage = () => {
   const handleOpenNoteDialog = () => {
     const candidature = candidatures.find(c => c.id === menuCandidatureId);
     setSelectedCandidature(candidature);
-    setNewNote(candidature.notes);
+    setNewNote(candidature.notes || '');
     setOpenNoteDialog(true);
     handleMenuClose();
   };
@@ -393,59 +214,47 @@ const CandidaturesPage = () => {
   const handleOpenRejectDialog = () => {
     const candidature = candidatures.find(c => c.id === menuCandidatureId);
     setSelectedCandidature(candidature);
-    setRejectReason(candidature.rejectReason || '');
+    setRejectReason(candidature.motif_refus || '');
     setOpenRejectDialog(true);
     handleMenuClose();
   };
   
   // Mettre à jour le statut d'une candidature
   const handleUpdateStatus = () => {
-    // Dans une application réelle, nous enverrions cette action à l'API
-    setCandidatures(
-      candidatures.map(c =>
-        c.id === selectedCandidature.id ? { ...c, status: newStatus } : c
-      )
-    );
-    setOpenStatusDialog(false);
+    if (!selectedCandidature) return;
+    
+    dispatch(updateCandidatureStatus({
+      candidatureId: selectedCandidature.id, 
+      status: newStatus
+    })).then(() => {
+      setOpenStatusDialog(false);
+    });
   };
   
   // Mettre à jour la note d'une candidature
   const handleUpdateNote = () => {
-    // Dans une application réelle, nous enverrions cette action à l'API
-    setCandidatures(
-      candidatures.map(c =>
-        c.id === selectedCandidature.id ? { ...c, notes: newNote } : c
-      )
-    );
-    setOpenNoteDialog(false);
+    if (!selectedCandidature) return;
+    
+    dispatch(addNoteToCandidature({
+      candidatureId: selectedCandidature.id, 
+      notes: newNote
+    })).then(() => {
+      setOpenNoteDialog(false);
+    });
   };
   
   // Refuser une candidature
   const handleReject = () => {
-    // Dans une application réelle, nous enverrions cette action à l'API
-    setCandidatures(
-      candidatures.map(c =>
-        c.id === selectedCandidature.id
-          ? { ...c, status: 'rejected', rejectReason }
-          : c
-      )
-    );
-    setOpenRejectDialog(false);
-  };
-  
-  // Changer le tri
-  const handleSortChange = (field) => {
-    if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortOrder('desc');
-    }
-  };
-  
-  // Obtenir les initiales pour l'avatar
-  const getInitials = (prenom, nom) => {
-    return `${prenom.charAt(0)}${nom.charAt(0)}`.toUpperCase();
+    if (!selectedCandidature) return;
+    
+    dispatch(updateCandidatureStatus({
+      candidatureId: selectedCandidature.id, 
+      status: 'rejected',
+      rejectReason
+    })).then(() => {
+      setOpenRejectDialog(false);
+      setRejectReason('');
+    });
   };
   
   // Formater la date relative (aujourd'hui, hier, etc.)
@@ -459,10 +268,7 @@ const CandidaturesPage = () => {
     } else if (diffDays === 1) {
       return 'Hier';
     } else {
-      return new Date(dateString).toLocaleDateString('fr-FR', {
-        day: 'numeric',
-        month: 'short',
-      });
+      return `Il y a ${diffDays} jours`;
     }
   };
   
@@ -476,6 +282,11 @@ const CandidaturesPage = () => {
         color={statusObj.color}
       />
     );
+  };
+  
+  // Obtenir les initiales pour l'avatar
+  const getInitials = (prenom, nom) => {
+    return `${prenom?.charAt(0) || ''}${nom?.charAt(0) || ''}`.toUpperCase();
   };
   
   // Naviguer vers le détail d'une candidature
@@ -532,8 +343,8 @@ const CandidaturesPage = () => {
             <InputLabel id="status-filter-label">Statut</InputLabel>
             <Select
               labelId="status-filter-label"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              value={filters.status || 'all'}
+              onChange={handleStatusChange}
               label="Statut"
             >
               {statuses.map((status) => (
@@ -547,8 +358,8 @@ const CandidaturesPage = () => {
           <FormControl sx={{ flexGrow: 1 }}>
             <OutlinedInput
               placeholder="Rechercher un candidat ou une offre..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={filters.search || ''}
+              onChange={handleSearchChange}
               size="small"
               startAdornment={
                 <InputAdornment position="start">
@@ -565,9 +376,9 @@ const CandidaturesPage = () => {
             <Button
               size="small"
               startIcon={<SortIcon />}
-              endIcon={sortField === 'date' && (sortOrder === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />)}
+              endIcon={(filters.sortField || 'date') === 'date' && ((filters.sortOrder || 'desc') === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />)}
               onClick={() => handleSortChange('date')}
-              color={sortField === 'date' ? 'primary' : 'inherit'}
+              color={(filters.sortField || 'date') === 'date' ? 'primary' : 'inherit'}
               sx={{ minWidth: 'auto' }}
             >
               Date
@@ -575,9 +386,9 @@ const CandidaturesPage = () => {
             <Button
               size="small"
               startIcon={<PersonIcon />}
-              endIcon={sortField === 'name' && (sortOrder === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />)}
+              endIcon={(filters.sortField || 'date') === 'name' && ((filters.sortOrder || 'desc') === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />)}
               onClick={() => handleSortChange('name')}
-              color={sortField === 'name' ? 'primary' : 'inherit'}
+              color={(filters.sortField || 'date') === 'name' ? 'primary' : 'inherit'}
               sx={{ minWidth: 'auto' }}
             >
               Nom
@@ -585,9 +396,9 @@ const CandidaturesPage = () => {
             <Button
               size="small"
               startIcon={<AssignmentIcon />}
-              endIcon={sortField === 'score' && (sortOrder === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />)}
+              endIcon={(filters.sortField || 'date') === 'score' && ((filters.sortOrder || 'desc') === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />)}
               onClick={() => handleSortChange('score')}
-              color={sortField === 'score' ? 'primary' : 'inherit'}
+              color={(filters.sortField || 'date') === 'score' ? 'primary' : 'inherit'}
               sx={{ minWidth: 'auto' }}
             >
               Score
@@ -602,7 +413,7 @@ const CandidaturesPage = () => {
           <Box display="flex" justifyContent="center" p={4}>
             <CircularProgress />
           </Box>
-        ) : sortedCandidatures.length === 0 ? (
+        ) : candidatures.length === 0 ? (
           <Box textAlign="center" p={4}>
             <Typography variant="body1" color="text.secondary">
               Aucune candidature ne correspond à vos critères.
@@ -610,7 +421,7 @@ const CandidaturesPage = () => {
           </Box>
         ) : (
           <List sx={{ width: '100%', bgcolor: 'background.paper', p: 0 }}>
-            {sortedCandidatures.map((candidature, index) => (
+            {candidatures.map((candidature, index) => (
               <React.Fragment key={candidature.id}>
                 <ListItem
                   alignItems="flex-start"
@@ -638,30 +449,32 @@ const CandidaturesPage = () => {
                       overlap="circular"
                       anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
                       badgeContent={
-                        <Avatar
-                          sx={{
-                            width: 20,
-                            height: 20,
-                            border: `2px solid ${theme.palette.background.paper}`,
-                            bgcolor: candidature.candidat.matchScore >= 80 ? 'success.main' : 'warning.main',
-                          }}
-                        >
-                          <Typography variant="caption" sx={{ fontSize: '0.6rem' }}>
-                            {candidature.candidat.matchScore}
-                          </Typography>
-                        </Avatar>
+                        candidature.candidat?.matchScore ? (
+                          <Avatar
+                            sx={{
+                              width: 20,
+                              height: 20,
+                              border: `2px solid ${theme.palette.background.paper}`,
+                              bgcolor: candidature.candidat.matchScore >= 80 ? 'success.main' : 'warning.main',
+                            }}
+                          >
+                            <Typography variant="caption" sx={{ fontSize: '0.6rem' }}>
+                              {candidature.candidat.matchScore}
+                            </Typography>
+                          </Avatar>
+                        ) : null
                       }
                     >
                       <Avatar
-                        src={candidature.candidat.photo}
-                        alt={`${candidature.candidat.prenom} ${candidature.candidat.nom}`}
+                        src={candidature.candidat?.photo}
+                        alt={candidature.candidat ? `${candidature.candidat.prenom} ${candidature.candidat.nom}` : ''}
                         sx={{ 
                           width: 56, 
                           height: 56,
                           bgcolor: candidature.status === 'new' ? 'primary.main' : 'grey.400',
                         }}
                       >
-                        {getInitials(candidature.candidat.prenom, candidature.candidat.nom)}
+                        {getInitials(candidature.candidat?.prenom, candidature.candidat?.nom)}
                       </Avatar>
                     </Badge>
                   </ListItemAvatar>
@@ -669,7 +482,7 @@ const CandidaturesPage = () => {
                     primary={
                       <Box display="flex" justifyContent="space-between" alignItems="center">
                         <Typography variant="subtitle1" component="span" fontWeight="medium">
-                          {candidature.candidat.prenom} {candidature.candidat.nom}
+                          {candidature.candidat?.prenom} {candidature.candidat?.nom}
                         </Typography>
                         {renderStatus(candidature.status)}
                       </Box>
@@ -677,17 +490,17 @@ const CandidaturesPage = () => {
                     secondary={
                       <>
                         <Typography component="span" variant="body2" color="text.primary">
-                          {candidature.candidat.titre}
+                          {candidature.candidat?.titre}
                         </Typography>
                         <Typography component="div" variant="body2" color="text.secondary" mt={0.5}>
-                          Pour: {candidature.offre.titre}
+                          Pour: {candidature.offre?.titre}
                         </Typography>
                         <Box display="flex" justifyContent="space-between" alignItems="center" mt={1}>
                           <Typography component="span" variant="caption" color="text.secondary">
-                            {formatRelativeDate(candidature.date)}
+                            {formatRelativeDate(candidature.date_candidature)}
                           </Typography>
                           <Box>
-                            {candidature.entretiens.length > 0 && (
+                            {candidature.entretiens?.length > 0 && (
                               <Chip
                                 icon={<EventIcon fontSize="small" />}
                                 label={`${candidature.entretiens.length} entretien${candidature.entretiens.length > 1 ? 's' : ''}`}
@@ -709,7 +522,7 @@ const CandidaturesPage = () => {
                     }
                   />
                 </ListItem>
-                {index < sortedCandidatures.length - 1 && <Divider component="li" />}
+                {index < candidatures.length - 1 && <Divider component="li" />}
               </React.Fragment>
             ))}
           </List>
@@ -723,8 +536,9 @@ const CandidaturesPage = () => {
         onClose={handleMenuClose}
       >
         <MenuItem onClick={() => {
-          const candidature = candidatures.find(c => c.id === menuCandidatureId);
-          handleContactCandidat(candidature.candidat.id);
+          if (selectedCandidature) {
+            handleContactCandidat(selectedCandidature.candidat?.id);
+          }
           handleMenuClose();
         }}>
           <ListItemIcon>
@@ -766,7 +580,7 @@ const CandidaturesPage = () => {
           {selectedCandidature && (
             <>
               <Typography variant="body2" gutterBottom>
-                Candidature de {selectedCandidature.candidat.prenom} {selectedCandidature.candidat.nom}
+                Candidature de {selectedCandidature.candidat?.prenom} {selectedCandidature.candidat?.nom}
               </Typography>
               <FormControl fullWidth margin="normal">
                 <InputLabel id="new-status-label">Nouveau statut</InputLabel>
@@ -799,7 +613,7 @@ const CandidaturesPage = () => {
           {selectedCandidature && (
             <>
               <Typography variant="body2" gutterBottom>
-                Candidature de {selectedCandidature.candidat.prenom} {selectedCandidature.candidat.nom}
+                Candidature de {selectedCandidature.candidat?.prenom} {selectedCandidature.candidat?.nom}
               </Typography>
               <TextField
                 fullWidth
@@ -826,7 +640,7 @@ const CandidaturesPage = () => {
           {selectedCandidature && (
             <>
               <Typography variant="body2" gutterBottom>
-                Vous êtes sur le point de refuser la candidature de {selectedCandidature.candidat.prenom} {selectedCandidature.candidat.nom}.
+                Vous êtes sur le point de refuser la candidature de {selectedCandidature.candidat?.prenom} {selectedCandidature.candidat?.nom}.
               </Typography>
               <TextField
                 fullWidth
