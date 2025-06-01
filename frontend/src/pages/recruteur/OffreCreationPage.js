@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
   Container,
@@ -43,8 +44,12 @@ import {
 } from "@mui/icons-material";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import { useNavigate } from "react-router-dom";
-import { createOffre, selectOffreLoading } from "../../redux/slices/offreSlice";
+import { 
+  createOffre, 
+  fetchOffreById, 
+  selectOffreLoading, 
+  selectCurrentOffre 
+} from "../../redux/slices/offreSlice";
 import Loader from "../../components/common/Loader";
 
 /**
@@ -53,13 +58,19 @@ import Loader from "../../components/common/Loader";
 const OffreCreationPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const duplicateId = queryParams.get('duplicate');
 
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [openPreview, setOpenPreview] = useState(false);
   const [competenceInput, setCompetenceInput] = useState("");
   const [competencesList, setCompetencesList] = useState([]);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [loadingTemplate, setLoadingTemplate] = useState(false);
 
   const loading = useSelector(selectOffreLoading);
+  const templateOffre = useSelector(selectCurrentOffre);
 
   // Liste des types de contrat
   const typesContrat = [
@@ -113,6 +124,39 @@ const OffreCreationPage = () => {
     "Logiciel de caisse",
   ];
 
+  // Charger l'offre à dupliquer si nécessaire
+  useEffect(() => {
+    if (duplicateId) {
+      setLoadingTemplate(true);
+      dispatch(fetchOffreById(duplicateId));
+    }
+  }, [dispatch, duplicateId]);
+
+  // Mettre à jour le formulaire avec les données de l'offre à dupliquer
+  useEffect(() => {
+    if (duplicateId && templateOffre) {
+      formik.setValues({
+        titre: `Copie de ${templateOffre.titre}`,
+        type_contrat: templateOffre.type_contrat || '',
+        description: templateOffre.description || '',
+        salaire_min: templateOffre.salaire_min || '',
+        salaire_max: templateOffre.salaire_max || '',
+        localisation: templateOffre.localisation || '',
+        remote: templateOffre.remote || 'non',
+        horaires: templateOffre.horaires || '',
+        experience_requise: templateOffre.experience_requise || '',
+        date_embauche_souhaitee: templateOffre.date_embauche_souhaitee ? templateOffre.date_embauche_souhaitee.split('T')[0] : '',
+        date_expiration: templateOffre.date_expiration ? templateOffre.date_expiration.split('T')[0] : '',
+        entretien_ia_auto: templateOffre.entretien_ia_auto || false,
+        urgence: templateOffre.urgence || false,
+        langues_requises: templateOffre.langues_requises || [],
+      });
+      
+      setCompetencesList(templateOffre.tags_competences || []);
+      setLoadingTemplate(false);
+    }
+  }, [templateOffre, duplicateId]);
+
   // Validation du formulaire
   const validationSchema = Yup.object({
     titre: Yup.string()
@@ -124,28 +168,22 @@ const OffreCreationPage = () => {
     description: Yup.string()
       .min(50, "La description doit contenir au moins 50 caractères")
       .required("Description requise"),
-    salaire_min: Yup.number().positive("Le salaire doit être positif"),
-    salaire_min: Yup.number().required("Salaire minimum est requise"),
-    salaire_max: Yup.number().required("Salaire maximum est requise"),
+    salaire_min: Yup.number().positive("Le salaire doit être positif").nullable(),
     salaire_max: Yup.number()
       .positive("Le salaire doit être positif")
-      .when("salaire_min", (salaire_min, schema) =>
-        salaire_min
-          ? schema.min(
-              salaire_min,
-              "Le salaire maximum doit être supérieur au salaire minimum"
-            )
-          : schema
-      ),
+      .when("salaire_min", (salaire_min, schema) => 
+        salaire_min ? schema.min(salaire_min, "Le salaire maximum doit être supérieur au salaire minimum") : schema
+      )
+      .nullable(),
     experience_requise: Yup.string().required("Niveau d'expérience requis"),
     date_embauche_souhaitee: Yup.date().min(
       new Date(Date.now() - 86400000),
       "La date d'embauche doit être future"
-    ),
+    ).nullable(),
     date_expiration: Yup.date().min(
       new Date(Date.now() - 86400000),
       "La date d'expiration doit être future"
-    ),
+    ).nullable(),
   });
 
   // Gestion du formulaire
@@ -177,7 +215,7 @@ const OffreCreationPage = () => {
       // Dispatche l'action pour créer l'offre
       dispatch(createOffre(offreData)).then((resultAction) => {
         if (resultAction.type === "offre/createOffre/fulfilled") {
-          navigate("/recruteur/offres");
+          navigate(`/recruteur/offres/${resultAction.payload.id}`);
         }
       });
     },
@@ -204,7 +242,7 @@ const OffreCreationPage = () => {
 
     setIsOptimizing(true);
 
-    // Simulation d'une optimisation IA
+    // Simulation d'appel API
     setTimeout(() => {
       const optimizedDescription = `${formik.values.description}\n\n
 NOTRE RESTAURANT :
@@ -274,6 +312,19 @@ REJOIGNEZ-NOUS si vous êtes passionné, rigoureux et avez l'esprit d'équipe. N
     }, 0);
   };
 
+  // Annuler la création d'offre
+  const handleCancel = () => {
+    if (formik.dirty || competencesList.length > 0) {
+      setConfirmDialogOpen(true);
+    } else {
+      navigate("/recruteur/offres");
+    }
+  };
+
+  if (loadingTemplate) {
+    return <Loader message="Chargement du modèle d'offre..." />;
+  }
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Paper elevation={1} sx={{ p: 4 }}>
@@ -284,12 +335,12 @@ REJOIGNEZ-NOUS si vous êtes passionné, rigoureux et avez l'esprit d'équipe. N
           mb={3}
         >
           <Typography variant="h4" component="h1" fontWeight="bold">
-            Nouvelle offre d'emploi
+            {duplicateId ? "Dupliquer une offre" : "Nouvelle offre d'emploi"}
           </Typography>
           <Button
             variant="outlined"
             startIcon={<ArrowBackIcon />}
-            onClick={() => navigate("/recruteur/offres")}
+            onClick={handleCancel}
           >
             Retour
           </Button>
@@ -334,11 +385,7 @@ REJOIGNEZ-NOUS si vous êtes passionné, rigoureux et avez l'esprit d'équipe. N
                   labelId="type-contrat-label"
                   id="type_contrat"
                   name="type_contrat"
-                  value={
-                    formik.values.type_contrat
-                      ? formik.values.type_contrat.toLowerCase()
-                      : ""
-                  }
+                  value={formik.values.type_contrat}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   label="Type de contrat"
@@ -518,7 +565,7 @@ REJOIGNEZ-NOUS si vous êtes passionné, rigoureux et avez l'esprit d'équipe. N
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
-                id="date_d'expiration"
+                id="date_expiration"
                 name="date_expiration"
                 label="Date d'expiration de l'offre"
                 type="date"
@@ -777,7 +824,7 @@ REJOIGNEZ-NOUS si vous êtes passionné, rigoureux et avez l'esprit d'équipe. N
                   <Button
                     variant="outlined"
                     sx={{ mr: 2 }}
-                    onClick={() => navigate("/recruteur/offres")}
+                    onClick={handleCancel}
                   >
                     Annuler
                   </Button>
@@ -902,6 +949,25 @@ REJOIGNEZ-NOUS si vous êtes passionné, rigoureux et avez l'esprit d'équipe. N
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenPreview(false)}>Fermer</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog de confirmation pour annuler */}
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={() => setConfirmDialogOpen(false)}
+      >
+        <DialogTitle>Confirmer l'annulation</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir quitter sans enregistrer ?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialogOpen(false)}>Non, continuer l'édition</Button>
+          <Button onClick={() => navigate('/recruteur/offres')} color="error">
+            Oui, abandonner les modifications
+          </Button>
         </DialogActions>
       </Dialog>
     </Container>
