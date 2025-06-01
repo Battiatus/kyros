@@ -35,6 +35,12 @@ import {
   selectOffreLoading,
   selectOffrePagination,
 } from '../../redux/slices/offreSlice';
+import { 
+  fetchDashboardStats, 
+  selectDashboardStats, 
+  selectDashboardLoading 
+} from '../../redux/slices/statsSlice';
+import { fetchCandidatures, selectAllCandidatures, selectCandidatureLoading } from '../../redux/slices/candidatureSlice';
 import { selectUser } from '../../redux/slices/authSlice';
 import Loader from '../../components/common/Loader';
 import StatCard from '../../components/dashboard/StatCard';
@@ -50,50 +56,39 @@ const DashboardRecruteurPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const theme = useTheme();
-  const [stats, setStats] = useState({
-    totalOffres: 0,
-    offresActives: 0,
-    totalCandidatures: 0,
-    nouvelleCandidatures: 0,
-    tauxConversion: 0,
-    entretiensPrevu: 0,
-  });
   
   const user = useSelector(selectUser);
   const offres = useSelector(selectAllOffres);
-  const loading = useSelector(selectOffreLoading);
+  const candidatures = useSelector(selectAllCandidatures);
+  const offreLoading = useSelector(selectOffreLoading);
+  const candidatureLoading = useSelector(selectCandidatureLoading);
   const pagination = useSelector(selectOffrePagination);
+  const stats = useSelector(selectDashboardStats);
+  const statsLoading = useSelector(selectDashboardLoading);
   
-  // Charger les offres au chargement de la page
+  const loading = offreLoading || candidatureLoading || statsLoading;
+  
+  // Charger les offres et les statistiques au chargement de la page
   useEffect(() => {
     dispatch(fetchOffres({ page: 1, limit: 5, status: 'active' }));
-    
-    // Dans un vrai scénario, nous récupérerions également les statistiques via une API
-    // Pour l'exemple, nous utilisons des données statiques
-    setStats({
-      totalOffres: 12,
-      offresActives: 8,
-      totalCandidatures: 47,
-      nouvelleCandidatures: 12,
-      tauxConversion: 68,
-      entretiensPrevu: 5,
-    });
+    dispatch(fetchCandidatures({ page: 1, limit: 5, recent: true }));
+    dispatch(fetchDashboardStats());
   }, [dispatch]);
   
   // Données pour le graphique des candidatures
   const chartData = {
-    labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai'],
+    labels: stats?.activityData?.labels || [],
     datasets: [
       {
         label: 'Candidatures',
-        data: [12, 19, 8, 15, 21],
+        data: stats?.activityData?.candidatures || [],
         backgroundColor: theme.palette.primary.main,
         borderColor: theme.palette.primary.main,
         tension: 0.4,
       },
       {
         label: 'Entretiens',
-        data: [5, 12, 4, 8, 10],
+        data: stats?.activityData?.entretiens || [],
         backgroundColor: theme.palette.secondary.main,
         borderColor: theme.palette.secondary.main,
         tension: 0.4,
@@ -115,7 +110,7 @@ const DashboardRecruteurPage = () => {
     },
   };
   
-  if (loading && offres.length === 0) {
+  if (loading && offres.length === 0 && !stats) {
     return <Loader message="Chargement du tableau de bord..." />;
   }
   
@@ -140,8 +135,8 @@ const DashboardRecruteurPage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Offres actives"
-            value={stats.offresActives}
-            total={stats.totalOffres}
+            value={stats?.offresActives || 0}
+            total={stats?.totalOffres || 0}
             icon={<BusinessCenterIcon />}
             color="#4F46E5"
           />
@@ -149,8 +144,8 @@ const DashboardRecruteurPage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Candidatures"
-            value={stats.nouvelleCandidatures}
-            total={stats.totalCandidatures}
+            value={stats?.nouvelleCandidatures || 0}
+            total={stats?.totalCandidatures || 0}
             icon={<PersonIcon />}
             color="#10B981"
           />
@@ -158,7 +153,7 @@ const DashboardRecruteurPage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Taux de conversion"
-            value={`${stats.tauxConversion}%`}
+            value={`${stats?.tauxConversion || 0}%`}
             icon={<TrendingUpIcon />}
             color="#F59E0B"
           />
@@ -166,7 +161,7 @@ const DashboardRecruteurPage = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatCard
             title="Entretiens prévus"
-            value={stats.entretiensPrevu}
+            value={stats?.entretiensPrevu || 0}
             icon={<MessageIcon />}
             color="#EF4444"
           />
@@ -187,7 +182,7 @@ const DashboardRecruteurPage = () => {
               </IconButton>
             </Box>
             
-            {loading ? (
+            {offreLoading ? (
               <LinearProgress sx={{ my: 4 }} />
             ) : offres.length === 0 ? (
               <Box textAlign="center" py={6}>
@@ -224,7 +219,7 @@ const DashboardRecruteurPage = () => {
             <Typography variant="h6" fontWeight="bold" mb={2}>
               Candidatures récentes
             </Typography>
-            <RecentCandidaturesCard />
+            <RecentCandidaturesCard candidatures={candidatures} loading={candidatureLoading} />
             <Box textAlign="center" mt={2}>
               <Button
                 endIcon={<ArrowForwardIcon />}
@@ -243,7 +238,13 @@ const DashboardRecruteurPage = () => {
               Activité de recrutement
             </Typography>
             <Box height={300}>
-              <Chart type="line" data={chartData} options={chartOptions} />
+              {statsLoading ? (
+                <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <Chart type="line" data={chartData} options={chartOptions} />
+              )}
             </Box>
           </Paper>
         </Grid>
@@ -303,8 +304,8 @@ const DashboardRecruteurPage = () => {
                     Messagerie
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    {stats.nouvelleCandidatures > 0 
-                      ? `Vous avez ${stats.nouvelleCandidatures} nouveaux messages.` 
+                    {stats?.nouvelleCandidatures > 0 
+                      ? `Vous avez ${stats.nouveauxMessages || 0} nouveaux messages.` 
                       : 'Consultez vos conversations avec les candidats.'}
                   </Typography>
                 </CardContent>
