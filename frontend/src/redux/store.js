@@ -11,6 +11,7 @@ import entrepriseReducer from './slices/entrepriseSlice';
 import chatReducer from './slices/chatSlice';
 import entretienReducer from './slices/entretienSlice';
 import uiReducer from './slices/uiSlice';
+import statsReducer from './slices/statsSlice';
 
 // Configuration de la persistence
 const persistConfig = {
@@ -29,6 +30,7 @@ const rootReducer = combineReducers({
   chat: chatReducer,
   entretien: entretienReducer,
   ui: uiReducer,
+  stats: statsReducer,
 });
 
 // Application de la persistence
