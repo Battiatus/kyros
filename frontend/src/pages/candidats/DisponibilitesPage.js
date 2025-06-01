@@ -32,9 +32,6 @@ import {
   Event as EventIcon,
   Public as PublicIcon
 } from '@mui/icons-material';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider, DatePicker, TimePicker } from '@mui/x-date-pickers';
-import frLocale from 'date-fns/locale/fr';
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../utils/api';
 
@@ -103,13 +100,13 @@ const DisponibilitesPage = () => {
   const [exceptionDialogOpen, setExceptionDialogOpen] = useState(false);
   const [currentDisponibilite, setCurrentDisponibilite] = useState({
     jour: 1,
-    heure_debut: new Date('2025-01-01T09:00:00'),
-    heure_fin: new Date('2025-01-01T18:00:00'),
+    heure_debut: '09:00',
+    heure_fin: '18:00',
     recurrence: 'hebdomadaire'
   });
   const [currentException, setCurrentException] = useState({
-    date_debut: new Date(),
-    date_fin: new Date(),
+    date_debut: new Date().toISOString().split('T')[0],
+    date_fin: new Date().toISOString().split('T')[0],
     motif: ''
   });
   const [editIndex, setEditIndex] = useState(-1);
@@ -166,15 +163,15 @@ const DisponibilitesPage = () => {
       const dispo = disponibilites[index];
       setCurrentDisponibilite({
         ...dispo,
-        heure_debut: new Date(`2025-01-01T${dispo.heure_debut}`),
-        heure_fin: new Date(`2025-01-01T${dispo.heure_fin}`)
+        heure_debut: dispo.heure_debut,
+        heure_fin: dispo.heure_fin
       });
       setEditIndex(index);
     } else {
       setCurrentDisponibilite({
         jour: 1,
-        heure_debut: new Date('2025-01-01T09:00:00'),
-        heure_fin: new Date('2025-01-01T18:00:00'),
+        heure_debut: '09:00',
+        heure_fin: '18:00',
         recurrence: 'hebdomadaire'
       });
       setEditIndex(-1);
@@ -189,8 +186,8 @@ const DisponibilitesPage = () => {
   const handleSaveDisponibilite = () => {
     const formattedDispo = {
       ...currentDisponibilite,
-      heure_debut: currentDisponibilite.heure_debut.toTimeString().substring(0, 5),
-      heure_fin: currentDisponibilite.heure_fin.toTimeString().substring(0, 5)
+      heure_debut: currentDisponibilite.heure_debut,
+      heure_fin: currentDisponibilite.heure_fin
     };
     
     if (modeDialog === 'edit' && editIndex !== -1) {
@@ -217,8 +214,8 @@ const DisponibilitesPage = () => {
   // Gérer les exceptions
   const handleOpenExceptionDialog = () => {
     setCurrentException({
-      date_debut: new Date(),
-      date_fin: new Date(),
+      date_debut: new Date().toISOString().split('T')[0],
+      date_fin: new Date().toISOString().split('T')[0],
       motif: ''
     });
     setExceptionDialogOpen(true);
@@ -235,8 +232,8 @@ const DisponibilitesPage = () => {
         const result = await dispatch(addException({
           userId: user.id,
           exception: {
-            date_debut: currentException.date_debut.toISOString(),
-            date_fin: currentException.date_fin.toISOString(),
+            date_debut: currentException.date_debut,
+            date_fin: currentException.date_fin,
             motif: currentException.motif
           }
         }));
@@ -280,324 +277,329 @@ const DisponibilitesPage = () => {
   };
   
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={frLocale}>
-      <Box sx={{ p: 3 }}>
-        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
-          Mes disponibilités
-        </Typography>
-        <Typography variant="body1" color="text.secondary" paragraph>
-          Gérez vos disponibilités pour permettre aux recruteurs de planifier des entretiens.
-        </Typography>
-        
-        {loading ? (
-          <Box display="flex" justifyContent="center" my={4}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <>
-            {/* Disponibilité immédiate */}
-            <Paper elevation={1} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Box>
-                  <Typography variant="h6" fontWeight="medium" gutterBottom>
-                    Disponibilité générale
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Indiquez si vous êtes disponible immédiatement pour un nouveau poste.
-                  </Typography>
-                </Box>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={availableImmediately}
-                      onChange={(e) => {
-                        setAvailableImmediately(e.target.checked);
-                        handleSaveDisponibilites();
-                      }}
-                      color="primary"
-                    />
-                  }
-                  label={availableImmediately ? "Disponible immédiatement" : "Non disponible immédiatement"}
-                />
-              </Box>
-              
-              <Divider sx={{ my: 2 }} />
-              
-              <Box display="flex" alignItems="center" mb={2}>
-                <PublicIcon sx={{ mr: 1, color: 'text.secondary' }} />
-                <Typography variant="body2" color="text.secondary" mr={2}>
-                  Fuseau horaire :
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+        Mes disponibilités
+      </Typography>
+      <Typography variant="body1" color="text.secondary" paragraph>
+        Gérez vos disponibilités pour permettre aux recruteurs de planifier des entretiens.
+      </Typography>
+      
+      {loading ? (
+        <Box display="flex" justifyContent="center" my={4}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          {/* Disponibilité immédiate */}
+          <Paper elevation={1} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Box>
+                <Typography variant="h6" fontWeight="medium" gutterBottom>
+                  Disponibilité générale
                 </Typography>
-                <FormControl size="small" sx={{ minWidth: 200 }}>
-                  <Select
-                    value={fuzeauHoraire}
+                <Typography variant="body2" color="text.secondary">
+                  Indiquez si vous êtes disponible immédiatement pour un nouveau poste.
+                </Typography>
+              </Box>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={availableImmediately}
                     onChange={(e) => {
-                      setFuzeauHoraire(e.target.value);
+                      setAvailableImmediately(e.target.checked);
                       handleSaveDisponibilites();
                     }}
-                  >
-                    <MenuItem value="Europe/Paris">Europe/Paris (GMT+1)</MenuItem>
-                    <MenuItem value="Europe/London">Europe/London (GMT)</MenuItem>
-                    <MenuItem value="America/New_York">America/New_York (GMT-5)</MenuItem>
-                    <MenuItem value="Asia/Tokyo">Asia/Tokyo (GMT+9)</MenuItem>
-                    <MenuItem value="Australia/Sydney">Australia/Sydney (GMT+11)</MenuItem>
-                  </Select>
-                </FormControl>
-              </Box>
-            </Paper>
+                    color="primary"
+                  />
+                }
+                label={availableImmediately ? "Disponible immédiatement" : "Non disponible immédiatement"}
+              />
+            </Box>
             
-            {/* Plages horaires */}
-            <Paper elevation={1} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6" fontWeight="medium">
-                  Plages horaires disponibles
-                </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={() => handleOpenDialog('add')}
+            <Divider sx={{ my: 2 }} />
+            
+            <Box display="flex" alignItems="center" mb={2}>
+              <PublicIcon sx={{ mr: 1, color: 'text.secondary' }} />
+              <Typography variant="body2" color="text.secondary" mr={2}>
+                Fuseau horaire :
+              </Typography>
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <Select
+                  value={fuzeauHoraire}
+                  onChange={(e) => {
+                    setFuzeauHoraire(e.target.value);
+                    handleSaveDisponibilites();
+                  }}
                 >
-                  Ajouter
-                </Button>
-              </Box>
-              
-              {disponibilites.length === 0 ? (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  Vous n'avez pas encore défini de plages horaires. Ajoutez-en pour indiquer vos disponibilités.
-                </Alert>
-              ) : (
-                <Grid container spacing={2}>
-                  {disponibilites.map((dispo, index) => (
-                    <Grid item xs={12} sm={6} md={4} key={index}>
-                      <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
-                        <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                          <Box>
-                            <Typography variant="subtitle1" fontWeight="medium"></Typography>
-                            <Typography variant="subtitle1" fontWeight="medium">
-                              {formatJour(dispo.jour)}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {dispo.heure_debut} - {dispo.heure_fin}
-                            </Typography>
-                            <Chip 
-                              size="small" 
-                              label={formatRecurrence(dispo.recurrence)} 
-                              sx={{ mt: 1 }} 
-                            />
-                          </Box>
-                          <Box>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleOpenDialog('edit', index)}
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleDeleteDisponibilite(index)}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Box>
+                  <MenuItem value="Europe/Paris">Europe/Paris (GMT+1)</MenuItem>
+                  <MenuItem value="Europe/London">Europe/London (GMT)</MenuItem>
+                  <MenuItem value="America/New_York">America/New_York (GMT-5)</MenuItem>
+                  <MenuItem value="Asia/Tokyo">Asia/Tokyo (GMT+9)</MenuItem>
+                  <MenuItem value="Australia/Sydney">Australia/Sydney (GMT+11)</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+          </Paper>
+          
+          {/* Plages horaires */}
+          <Paper elevation={1} sx={{ p: 3, mb: 3, borderRadius: 2 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6" fontWeight="medium">
+                Plages horaires disponibles
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => handleOpenDialog('add')}
+              >
+                Ajouter
+              </Button>
+            </Box>
+            
+            {disponibilites.length === 0 ? (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Vous n'avez pas encore défini de plages horaires. Ajoutez-en pour indiquer vos disponibilités.
+              </Alert>
+            ) : (
+              <Grid container spacing={2}>
+                {disponibilites.map((dispo, index) => (
+                  <Grid item xs={12} sm={6} md={4} key={index}>
+                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight="medium">
+                            {formatJour(dispo.jour)}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {dispo.heure_debut} - {dispo.heure_fin}
+                          </Typography>
+                          <Chip 
+                            size="small" 
+                            label={formatRecurrence(dispo.recurrence)} 
+                            sx={{ mt: 1 }} 
+                          />
                         </Box>
-                      </Paper>
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
-            </Paper>
-            
-            {/* Exceptions (congés, indisponibilités) */}
-            <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6" fontWeight="medium">
-                  Périodes d'indisponibilité
-                </Typography>
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={handleOpenExceptionDialog}
-                >
-                  Ajouter
-                </Button>
-              </Box>
-              
-              {exceptions.length === 0 ? (
-                <Alert severity="info">
-                  Vous n'avez pas encore défini de périodes d'indisponibilité (vacances, congés, etc.).
-                </Alert>
-              ) : (
-                <Grid container spacing={2}>
-                  {exceptions.map((exception, index) => (
-                    <Grid item xs={12} sm={6} md={4} key={index}>
-                      <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
-                        <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                          <Box>
-                            <Typography variant="subtitle1" fontWeight="medium">
-                              {new Date(exception.date_debut).toLocaleDateString('fr-FR')} - {new Date(exception.date_fin).toLocaleDateString('fr-FR')}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {exception.motif}
-                            </Typography>
-                          </Box>
+                        <Box>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenDialog('edit', index)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
                           <IconButton
                             size="small"
                             color="error"
-                            onClick={() => handleDeleteException(exception.id)}
+                            onClick={() => handleDeleteDisponibilite(index)}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Box>
-                      </Paper>
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
-            </Paper>
-          </>
-        )}
-        
-        {/* Dialog d'ajout/modification de disponibilité */}
-        <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-          <DialogTitle>
-            {modeDialog === 'add' ? 'Ajouter une disponibilité' : 'Modifier la disponibilité'}
-          </DialogTitle>
-          <DialogContent>
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel>Jour</InputLabel>
-                  <Select
-                    value={currentDisponibilite.jour}
-                    onChange={(e) => setCurrentDisponibilite({
-                      ...currentDisponibilite,
-                      jour: e.target.value
-                    })}
-                    label="Jour"
-                  >
-                    <MenuItem value={1}>Lundi</MenuItem>
-                    <MenuItem value={2}>Mardi</MenuItem>
-                    <MenuItem value={3}>Mercredi</MenuItem>
-                    <MenuItem value={4}>Jeudi</MenuItem>
-                    <MenuItem value={5}>Vendredi</MenuItem>
-                    <MenuItem value={6}>Samedi</MenuItem>
-                    <MenuItem value={7}>Dimanche</MenuItem>
-                  </Select>
-                </FormControl>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
               </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <TimePicker
-                  label="Heure de début"
-                  value={currentDisponibilite.heure_debut}
-                  onChange={(newValue) => setCurrentDisponibilite({
+            )}
+          </Paper>
+          
+          {/* Exceptions (congés, indisponibilités) */}
+          <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6" fontWeight="medium">
+                Périodes d'indisponibilité
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleOpenExceptionDialog}
+              >
+                Ajouter
+              </Button>
+            </Box>
+            
+            {exceptions.length === 0 ? (
+              <Alert severity="info">
+                Vous n'avez pas encore défini de périodes d'indisponibilité (vacances, congés, etc.).
+              </Alert>
+            ) : (
+              <Grid container spacing={2}>
+                {exceptions.map((exception, index) => (
+                  <Grid item xs={12} sm={6} md={4} key={index}>
+                    <Paper elevation={0} sx={{ p: 2, bgcolor: 'background.default', borderRadius: 2 }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight="medium">
+                            {new Date(exception.date_debut).toLocaleDateString('fr-FR')} - {new Date(exception.date_fin).toLocaleDateString('fr-FR')}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {exception.motif}
+                          </Typography>
+                        </Box>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteException(exception.id)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Paper>
+        </>
+      )}
+      
+      {/* Dialog d'ajout/modification de disponibilité */}
+      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {modeDialog === 'add' ? 'Ajouter une disponibilité' : 'Modifier la disponibilité'}
+        </DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Jour</InputLabel>
+                <Select
+                  value={currentDisponibilite.jour}
+                  onChange={(e) => setCurrentDisponibilite({
                     ...currentDisponibilite,
-                    heure_debut: newValue
+                    jour: e.target.value
                   })}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <TimePicker
-                  label="Heure de fin"
-                  value={currentDisponibilite.heure_fin}
-                  onChange={(newValue) => setCurrentDisponibilite({
+                  label="Jour"
+                >
+                  <MenuItem value={1}>Lundi</MenuItem>
+                  <MenuItem value={2}>Mardi</MenuItem>
+                  <MenuItem value={3}>Mercredi</MenuItem>
+                  <MenuItem value={4}>Jeudi</MenuItem>
+                  <MenuItem value={5}>Vendredi</MenuItem>
+                  <MenuItem value={6}>Samedi</MenuItem>
+                  <MenuItem value={7}>Dimanche</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Heure de début"
+                type="time"
+                value={currentDisponibilite.heure_debut}
+                onChange={(e) => setCurrentDisponibilite({
+                  ...currentDisponibilite,
+                  heure_debut: e.target.value
+                })}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Heure de fin"
+                type="time"
+                value={currentDisponibilite.heure_fin}
+                onChange={(e) => setCurrentDisponibilite({
+                  ...currentDisponibilite,
+                  heure_fin: e.target.value
+                })}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            
+            <Grid item xs={12}>
+              <FormControl fullWidth>
+                <InputLabel>Récurrence</InputLabel>
+                <Select
+                  value={currentDisponibilite.recurrence}
+                  onChange={(e) => setCurrentDisponibilite({
                     ...currentDisponibilite,
-                    heure_fin: newValue
+                    recurrence: e.target.value
                   })}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <FormControl fullWidth>
-                  <InputLabel>Récurrence</InputLabel>
-                  <Select
-                    value={currentDisponibilite.recurrence}
-                    onChange={(e) => setCurrentDisponibilite({
-                      ...currentDisponibilite,
-                      recurrence: e.target.value
-                    })}
-                    label="Récurrence"
-                  >
-                    <MenuItem value="unique">Une seule fois</MenuItem>
-                    <MenuItem value="hebdomadaire">Chaque semaine</MenuItem>
-                    <MenuItem value="mensuelle">Chaque mois</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
+                  label="Récurrence"
+                >
+                  <MenuItem value="unique">Une seule fois</MenuItem>
+                  <MenuItem value="hebdomadaire">Chaque semaine</MenuItem>
+                  <MenuItem value="mensuelle">Chaque mois</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseDialog}>Annuler</Button>
-            <Button 
-              variant="contained" 
-              onClick={handleSaveDisponibilite}
-              startIcon={<SaveIcon />}
-            >
-              Enregistrer
-            </Button>
-          </DialogActions>
-        </Dialog>
-        
-        {/* Dialog d'ajout d'exception */}
-        <Dialog open={exceptionDialogOpen} onClose={handleCloseExceptionDialog} maxWidth="sm" fullWidth>
-          <DialogTitle>Ajouter une période d'indisponibilité</DialogTitle>
-          <DialogContent>
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12} sm={6}>
-                <DatePicker
-                  label="Date de début"
-                  value={currentException.date_debut}
-                  onChange={(newValue) => setCurrentException({
-                    ...currentException,
-                    date_debut: newValue
-                  })}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
-                />
-              </Grid>
-              
-              <Grid item xs={12} sm={6}>
-                <DatePicker
-                  label="Date de fin"
-                  value={currentException.date_fin}
-                  onChange={(newValue) => setCurrentException({
-                    ...currentException,
-                    date_fin: newValue
-                  })}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
-                />
-              </Grid>
-              
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Motif"
-                  placeholder="Ex: Vacances, Formation, etc."
-                  value={currentException.motif}
-                  onChange={(e) => setCurrentException({
-                    ...currentException,
-                    motif: e.target.value
-                  })}
-                />
-              </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>Annuler</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleSaveDisponibilite}
+            startIcon={<SaveIcon />}
+          >
+            Enregistrer
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Dialog d'ajout d'exception */}
+      <Dialog open={exceptionDialogOpen} onClose={handleCloseExceptionDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Ajouter une période d'indisponibilité</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Date de début"
+                type="date"
+                value={currentException.date_debut}
+                onChange={(e) => setCurrentException({
+                  ...currentException,
+                  date_debut: e.target.value
+                })}
+                InputLabelProps={{ shrink: true }}
+              />
             </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseExceptionDialog}>Annuler</Button>
-            <Button 
-              variant="contained" 
-              onClick={handleSaveException}
-              startIcon={<SaveIcon />}
-            >
-              Enregistrer
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
-    </LocalizationProvider>
+            
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Date de fin"
+                type="date"
+                value={currentException.date_fin}
+                onChange={(e) => setCurrentException({
+                  ...currentException,
+                  date_fin: e.target.value
+                })}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Motif"
+                placeholder="Ex: Vacances, Formation, etc."
+                value={currentException.motif}
+                onChange={(e) => setCurrentException({
+                  ...currentException,
+                  motif: e.target.value
+                })}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseExceptionDialog}>Annuler</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleSaveException}
+            startIcon={<SaveIcon />}
+          >
+            Enregistrer
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 
