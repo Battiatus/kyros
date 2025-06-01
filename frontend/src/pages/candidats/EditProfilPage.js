@@ -32,7 +32,9 @@ import {
   ListItemText,
   ListItemSecondaryAction,
   List,
-  Chip
+  Chip,
+  FormControlLabel,
+  Switch
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -507,12 +509,17 @@ const EditProfilPage = () => {
                         </Grid>
                         
                         <Grid item xs={12} sm={6}>
-                          <DatePicker
-                            label="Date de naissance"
-                            value={formik.values.date_naissance}
-                            onChange={(value) => formik.setFieldValue('date_naissance', value)}
-                            renderInput={(params) => <TextField {...params} fullWidth />}
-                          />
+                         <TextField
+  fullWidth
+  label="Date de naissance"
+  type="date"
+  name="date_naissance"
+  value={formik.values.date_naissance ? formik.values.date_naissance.toISOString().split('T')[0] : ''}
+  onChange={(e) => {
+    formik.setFieldValue('date_naissance', new Date(e.target.value));
+  }}
+  InputLabelProps={{ shrink: true }}
+/>
                         </Grid>
                         
                         <Grid item xs={12} sm={6}>
@@ -950,14 +957,51 @@ const EditProfilPage = () => {
                 />
               </Grid>
               
-              <Grid item xs={12} sm={6}>
-                <DatePicker
-                  label="Date de début"
-                  value={newExperience.date_debut}
-                  onChange={(value) => setNewExperience({ ...newExperience, date_debut: value })}
-                  renderInput={(params) => <TextField {...params} fullWidth />}
-                />
-              </Grid>
+             <Grid item xs={12} sm={6}>
+  <TextField
+    fullWidth
+    label="Date de début"
+    type="date"
+    value={newExperience.date_debut instanceof Date ? newExperience.date_debut.toISOString().split('T')[0] : ''}
+    onChange={(e) => setNewExperience({ 
+      ...newExperience, 
+      date_debut: new Date(e.target.value) 
+    })}
+    InputLabelProps={{ shrink: true }}
+  />
+</Grid>
+
+<Grid item xs={12} sm={6}>
+  <Box display="flex" alignItems="center">
+    <FormControlLabel
+      control={
+        <Switch
+          checked={newExperience.en_cours}
+          onChange={(e) => setNewExperience({ 
+            ...newExperience, 
+            en_cours: e.target.checked 
+          })}
+        />
+      }
+      label="En cours"
+    />
+    
+    {!newExperience.en_cours && (
+      <TextField
+        fullWidth
+        label="Date de fin"
+        type="date"
+        value={newExperience.date_fin instanceof Date ? newExperience.date_fin.toISOString().split('T')[0] : ''}
+        onChange={(e) => setNewExperience({ 
+          ...newExperience, 
+          date_fin: new Date(e.target.value) 
+        })}
+        InputLabelProps={{ shrink: true }}
+        sx={{ ml: 2 }}
+      />
+    )}
+  </Box>
+</Grid>
               
               <Grid item xs={12} sm={6}>
                 <Box display="flex" alignItems="center" height="100%">
