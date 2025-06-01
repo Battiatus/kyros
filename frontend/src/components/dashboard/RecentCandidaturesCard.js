@@ -10,53 +10,20 @@ import {
   Chip,
   Divider,
   Button,
+  CircularProgress,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
 /**
  * Composant affichant les candidatures récentes
  * 
+ * @param {Object} props - Propriétés du composant
+ * @param {Array} props.candidatures - Liste des candidatures
+ * @param {boolean} props.loading - État de chargement
  * @returns {JSX.Element} Composant RecentCandidaturesCard
  */
-const RecentCandidaturesCard = () => {
+const RecentCandidaturesCard = ({ candidatures = [], loading = false }) => {
   const navigate = useNavigate();
-  
-  // Données d'exemple pour les candidatures récentes
-  // Dans une version réelle, ces données viendraient d'une API
-  const recentCandidatures = [
-    {
-      id: 1,
-      candidatName: 'Jean Dupont',
-      candidatAvatar: null,
-      offreTitle: 'Chef de Rang',
-      date: '2025-05-28T10:30:00',
-      status: 'new',
-    },
-    {
-      id: 2,
-      candidatName: 'Marie Martin',
-      candidatAvatar: null,
-      offreTitle: 'Sous-Chef',
-      date: '2025-05-27T15:45:00',
-      status: 'viewed',
-    },
-    {
-      id: 3,
-      candidatName: 'Lucas Bernard',
-      candidatAvatar: null,
-      offreTitle: 'Barman',
-      date: '2025-05-27T09:15:00',
-      status: 'interview',
-    },
-    {
-      id: 4,
-      candidatName: 'Emma Petit',
-      candidatAvatar: null,
-      offreTitle: 'Réceptionniste',
-      date: '2025-05-26T14:20:00',
-      status: 'rejected',
-    },
-  ];
   
   // Formatage de la date relative (aujourd'hui, hier, etc.)
   const formatRelativeDate = (dateString) => {
@@ -98,16 +65,24 @@ const RecentCandidaturesCard = () => {
       .toUpperCase();
   };
   
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+        <CircularProgress />
+      </Box>
+    );
+  }
+  
   return (
     <List sx={{ width: '100%', bgcolor: 'background.paper', p: 0 }}>
-      {recentCandidatures.length === 0 ? (
+      {candidatures.length === 0 ? (
         <Box textAlign="center" py={4}>
           <Typography variant="body2" color="text.secondary">
             Aucune candidature récente.
           </Typography>
         </Box>
       ) : (
-        recentCandidatures.map((candidature, index) => (
+        candidatures.map((candidature, index) => (
           <React.Fragment key={candidature.id}>
             <ListItem 
               alignItems="flex-start" 
@@ -115,15 +90,15 @@ const RecentCandidaturesCard = () => {
               onClick={() => navigate(`/recruteur/candidatures/${candidature.id}`)}
             >
               <ListItemAvatar>
-                <Avatar alt={candidature.candidatName}>
-                  {getInitials(candidature.candidatName)}
+                <Avatar alt={candidature.candidat?.nom ? `${candidature.candidat.prenom} ${candidature.candidat.nom}` : ''}>
+                  {candidature.candidat?.nom ? getInitials(`${candidature.candidat.prenom} ${candidature.candidat.nom}`) : '?'}
                 </Avatar>
               </ListItemAvatar>
               <ListItemText
                 primary={
                   <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Typography variant="subtitle2" component="span">
-                      {candidature.candidatName}
+                      {candidature.candidat?.prenom} {candidature.candidat?.nom}
                     </Typography>
                     {renderStatus(candidature.status)}
                   </Box>
@@ -131,16 +106,16 @@ const RecentCandidaturesCard = () => {
                 secondary={
                   <>
                     <Typography component="span" variant="body2" color="text.primary">
-                      {candidature.offreTitle}
+                      {candidature.offre?.titre}
                     </Typography>
                     <Typography component="div" variant="caption" color="text.secondary">
-                      {formatRelativeDate(candidature.date)}
+                      {formatRelativeDate(candidature.date_candidature)}
                     </Typography>
                   </>
                 }
               />
             </ListItem>
-            {index < recentCandidatures.length - 1 && <Divider variant="inset" component="li" />}
+            {index < candidatures.length - 1 && <Divider variant="inset" component="li" />}
           </React.Fragment>
         ))
       )}
