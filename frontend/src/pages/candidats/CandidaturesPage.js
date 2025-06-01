@@ -30,7 +30,8 @@ import {
   Cancel as CancelIcon,
   CheckCircle as CheckCircleIcon,
   Schedule as ScheduleIcon,
-  Description as DescriptionIcon
+  Description as DescriptionIcon,
+  Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
