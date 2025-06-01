@@ -8,6 +8,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import Loader from './components/common/Loader';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import RecruteurLayout from './components/layout/RecruteurLayout';
+import CandidatLayout from './components/layout/CandidatLayout';
 
 // Auth & Redux
 import { getProfile, selectIsAuthenticated } from './redux/slices/authSlice';
@@ -20,6 +21,17 @@ const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'))
 
 // Pages Candidat
 const CandidatDashboardPage = lazy(() => import('./pages/candidats/DashboardPage'));
+const CandidatSwipePage = lazy(() => import('./pages/candidats/SwipePage'));
+const CandidatCandidaturesPage = lazy(() => import('./pages/candidats/CandidaturesPage'));
+const CandidatCandidatureDetailPage = lazy(() => import('./pages/candidats/CandidatureDetailPage'));
+const CandidatProfilPage = lazy(() => import('./pages/candidats/ProfilPage'));
+const CandidatEditProfilPage = lazy(() => import('./pages/candidats/EditProfilPage'));
+const CandidatDisponibilitesPage = lazy(() => import('./pages/candidats/DisponibilitesPage'));
+const CandidatMessagesPage = lazy(() => import('./pages/candidats/MessagesPage'));
+const CandidatConversationPage = lazy(() => import('./pages/candidats/ConversationPage'));
+const CandidatEntretiensPage = lazy(() => import('./pages/candidats/EntretiensPage'));
+const CandidatStatistiquesPage = lazy(() => import('./pages/candidats/StatistiquesPage'));
+const CandidatParametresPage = lazy(() => import('./pages/candidats/ParametresPage'));
 
 // Pages Recruteur
 const RecruteurDashboardPage = lazy(() => import('./pages/recruteur/DashboardRecruteurPage'));
@@ -65,8 +77,21 @@ function App() {
 
           {/* Routes protégées - Candidat */}
           <Route element={<ProtectedRoute allowedRoles={['candidat']} />}>
-            <Route path="/candidat/dashboard" element={<CandidatDashboardPage />} />
-            {/* Ajouter d'autres routes candidat ici */}
+            <Route path="/candidat" element={<CandidatLayout />}>
+              <Route index element={<Navigate to="/candidat/dashboard" replace />} />
+              <Route path="dashboard" element={<CandidatDashboardPage />} />
+              <Route path="swipe" element={<CandidatSwipePage />} />
+              <Route path="candidatures" element={<CandidatCandidaturesPage />} />
+              <Route path="candidatures/:id" element={<CandidatCandidatureDetailPage />} />
+              <Route path="profil" element={<CandidatProfilPage />} />
+              <Route path="profil/edit" element={<CandidatEditProfilPage />} />
+              <Route path="disponibilites" element={<CandidatDisponibilitesPage />} />
+              <Route path="messages" element={<CandidatMessagesPage />} />
+              <Route path="messages/:id" element={<CandidatConversationPage />} />
+              <Route path="entretiens" element={<CandidatEntretiensPage />} />
+              <Route path="statistiques" element={<CandidatStatistiquesPage />} />
+              <Route path="parametres" element={<CandidatParametresPage />} />
+            </Route>
           </Route>
 
           {/* Routes protégées - Recruteur */}
