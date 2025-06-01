@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import {
   Box,
   Container,
@@ -45,150 +48,90 @@ import {
 import PersonIcon from '@mui/icons-material/Person';
 
 import { useNavigate } from 'react-router-dom';
+import { 
+  fetchEntretiens, 
+  cancelEntretien, 
+  selectAllEntretiens, 
+  selectEntretienLoading, 
+  selectEntretienError 
+} from '../../redux/slices/entretienSlice';
+import { updateFilters, selectFilters } from '../../redux/slices/uiSlice';
 
 /**
  * Page de gestion des entretiens
  */
 const EntretiensPage = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   
-  const [loading, setLoading] = useState(true);
-  const [entretiens, setEntretiens] = useState([]);
   const [tabValue, setTabValue] = useState(0);
-  const [search, setSearch] = useState('');
   const [menuAnchorEl, setMenuAnchorEl] = useState(null);
   const [selectedEntretien, setSelectedEntretien] = useState(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [entretienLink, setEntretienLink] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
+  
+  const entretiens = useSelector(selectAllEntretiens);
+  const loading = useSelector(selectEntretienLoading);
+  const error = useSelector(selectEntretienError);
+  const filters = useSelector(selectFilters('entretiens'));
   
   // Charger les entretiens
   useEffect(() => {
-    // Dans une application réelle, nous ferions un appel API
-    setLoading(true);
+    const params = {
+      page: 1,
+      limit: 50,
+      status: getStatusFilterByTab(tabValue),
+      search: filters.search || '',
+      sortBy: filters.sortField || 'date',
+      order: filters.sortOrder || 'desc',
+    };
     
-    // Simulation de délai réseau avec données fictives
-    setTimeout(() => {
-      const mockEntretiens = [
-        {
-          id: 1,
-          candidat: {
-            id: 101,
-            prenom: 'Marie',
-            nom: 'Dupont',
-            photo: null,
-            titre: 'Chef de Rang',
-          },
-          offre: {
-            id: 201,
-            titre: 'Chef de Rang - Restaurant Le Gourmet',
-          },
-          date: '2025-06-03T14:00:00',
-          duree: 45,
-          type: 'video',
-          statut: 'planifie',
-          notes: '',
-          lien: 'https://meet.hereoz.com/entretien/123456',
-        },
-        {
-          id: 2,
-          candidat: {
-            id: 102,
-            prenom: 'Thomas',
-            nom: 'Martin',
-            photo: null,
-            titre: 'Barman',
-          },
-          offre: {
-            id: 202,
-            titre: 'Barman expérimenté - Bar Le Cocktail',
-          },
-          date: '2025-06-01T10:30:00',
-          duree: 60,
-          type: 'physique',
-          statut: 'realise',
-          notes: 'Très bon entretien, candidat expérimenté et motivé.',
-          lieu: 'Bar Le Cocktail, 15 rue des Lilas, Paris',
-        },
-        {
-          id: 3,
-          candidat: {
-            id: 103,
-            prenom: 'Sophie',
-            nom: 'Bernard',
-            photo: null,
-            titre: 'Serveuse',
-          },
-          offre: {
-            id: 201,
-            titre: 'Chef de Rang - Restaurant Le Gourmet',
-          },
-          date: '2025-05-28T15:45:00',
-          duree: 30,
-          type: 'video',
-          statut: 'annule',
-          notes: 'Annulé par le candidat pour raisons personnelles.',
-          lien: 'https://meet.hereoz.com/entretien/789012',
-        },
-        {
-          id: 4,
-          candidat: {
-            id: 104,
-            prenom: 'Lucas',
-            nom: 'Petit',
-            photo: null,
-            titre: 'Second de cuisine',
-          },
-          offre: {
-            id: 203,
-            titre: 'Second de cuisine - Restaurant Le Gourmet',
-          },
-          date: '2025-06-05T11:00:00',
-          duree: 45,
-          type: 'physique',
-          statut: 'planifie',
-          lieu: 'Restaurant Le Gourmet, 25 avenue Victor Hugo, Paris',
-        },
-        {
-          id: 5,
-          candidat: {
-            id: 105,
-            prenom: 'Emma',
-            nom: 'Leroy',
-            photo: null,
-            titre: 'Réceptionniste',
-          },
-          offre: {
-            id: 204,
-            titre: 'Réceptionniste - Hôtel Le Palace',
-          },
-          date: '2025-05-30T09:15:00',
-          duree: 60,
-          type: 'video',
-          statut: 'realise',
-          notes: 'Bonne candidate, à l\'aise à l\'oral, expérience pertinente.',
-          lien: 'https://meet.hereoz.com/entretien/345678',
-        },
-      ];
-      
-      setEntretiens(mockEntretiens);
-      setLoading(false);
-    }, 1000);
-  }, []);
+    dispatch(fetchEntretiens(params));
+  }, [dispatch, tabValue, filters.search, filters.sortField, filters.sortOrder]);
   
-  // Changer d'onglet
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
+  // Fonction pour obtenir le filtre de statut en fonction de l'onglet
+  const getStatusFilterByTab = (tab) => {
+    switch (tab) {
+      case 1:
+        return 'planifie,confirme';
+      case 2:
+        return 'realise';
+      case 3:
+        return 'annule';
+      default:
+        return 'all';
+    }
   };
   
-  // Ouvrir le menu
+  // Changement d'onglet
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+    
+    // Mettre à jour le filtre de statut en fonction de l'onglet
+    dispatch(updateFilters({
+      category: 'entretiens',
+      filters: { status: getStatusFilterByTab(newValue) }
+    }));
+  };
+  
+  // Recherche d'entretiens
+  const handleSearchChange = (e) => {
+    dispatch(updateFilters({
+      category: 'entretiens',
+      filters: { search: e.target.value }
+    }));
+  };
+  
+  // Ouvrir le menu contextuel
   const handleMenuOpen = (event, entretien) => {
     setMenuAnchorEl(event.currentTarget);
     setSelectedEntretien(entretien);
   };
   
-  // Fermer le menu
+  // Fermer le menu contextuel
   const handleMenuClose = () => {
     setMenuAnchorEl(null);
   };
@@ -207,38 +150,21 @@ const EntretiensPage = () => {
   
   // Ouvrir le dialog de lien
   const handleOpenLinkDialog = () => {
-    setEntretienLink(selectedEntretien?.lien || '');
+    setEntretienLink(selectedEntretien?.lien_visio || '');
     setLinkDialogOpen(true);
     handleMenuClose();
   };
   
   // Annuler un entretien
   const handleCancelEntretien = () => {
-    // Dans une application réelle, nous enverrions cette action à l'API
-    setEntretiens(
-      entretiens.map(entretien =>
-        entretien.id === selectedEntretien.id
-          ? { ...entretien, statut: 'annule' }
-          : entretien
-      )
-    );
-    setCancelDialogOpen(false);
-  };
-  
-  // Supprimer un entretien
-  const handleDeleteEntretien = () => {
-    // Dans une application réelle, nous enverrions cette action à l'API
-    setEntretiens(
-      entretiens.filter(entretien => entretien.id !== selectedEntretien.id)
-    );
-    setDeleteDialogOpen(false);
-  };
-  
-  // Partager le lien d'entretien
-  const handleShareLink = () => {
-    // Dans une application réelle, nous enverrions le lien par email ou message
-    console.log('Lien d\'entretien partagé:', entretienLink);
-    setLinkDialogOpen(false);
+    if (selectedEntretien) {
+      dispatch(cancelEntretien({ 
+        entretienId: selectedEntretien.id,
+        reason: cancelReason
+      }));
+      setCancelDialogOpen(false);
+      setCancelReason('');
+    }
   };
   
   // Formater la date
@@ -271,38 +197,16 @@ const EntretiensPage = () => {
   
   // Obtenir les initiales pour l'avatar
   const getInitials = (prenom, nom) => {
-    return `${prenom.charAt(0)}${nom.charAt(0)}`.toUpperCase();
+    return `${prenom?.charAt(0) || ''}${nom?.charAt(0) || ''}`.toUpperCase();
   };
   
-  // Filtrer les entretiens selon l'onglet, la recherche
-  const filteredEntretiens = entretiens.filter(entretien => {
-    // Filtre par onglet
-    if (tabValue === 1 && entretien.statut !== 'planifie') {
-      return false;
-    }
-    if (tabValue === 2 && entretien.statut !== 'realise') {
-      return false;
-    }
-    if (tabValue === 3 && entretien.statut !== 'annule') {
-      return false;
-    }
-    
-    // Filtre par recherche
-    if (search) {
-      const searchLower = search.toLowerCase();
-      const fullName = `${entretien.candidat.prenom} ${entretien.candidat.nom}`.toLowerCase();
-      const offreTitle = entretien.offre.titre.toLowerCase();
-      
-      return fullName.includes(searchLower) || offreTitle.includes(searchLower);
-    }
-    
-    return true;
-  });
-  
-  // Trier les entretiens par date
-  const sortedEntretiens = [...filteredEntretiens].sort((a, b) => {
-    return new Date(a.date) - new Date(b.date);
-  });
+  // Partager le lien d'entretien
+  const handleShareLink = () => {
+    // Dans une application réelle, nous enverrions le lien par email ou message
+    navigator.clipboard.writeText(entretienLink);
+    toast.success('Lien copié dans le presse-papier');
+    setLinkDialogOpen(false);
+  };
   
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -333,9 +237,9 @@ const EntretiensPage = () => {
             label={
               <Box sx={{ position: 'relative' }}>
                 À venir
-                {entretiens.filter(e => e.statut === 'planifie').length > 0 && (
+                {entretiens.filter(e => ['planifie', 'confirme'].includes(e.statut)).length > 0 && (
                   <Chip
-                    label={entretiens.filter(e => e.statut === 'planifie').length}
+                    label={entretiens.filter(e => ['planifie', 'confirme'].includes(e.statut)).length}
                     color="primary"
                     size="small"
                     sx={{ position: 'absolute', top: -8, right: -20 }}
@@ -356,8 +260,8 @@ const EntretiensPage = () => {
             placeholder="Rechercher un entretien..."
             variant="outlined"
             size="small"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={filters.search || ''}
+            onChange={handleSearchChange}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -373,10 +277,10 @@ const EntretiensPage = () => {
         <Box display="flex" justifyContent="center" p={4}>
           <CircularProgress />
         </Box>
-      ) : sortedEntretiens.length === 0 ? (
+      ) : entretiens.length === 0 ? (
         <Paper elevation={1} sx={{ p: 4, textAlign: 'center' }}>
           <Typography variant="body1" color="text.secondary" paragraph>
-            {search ? 'Aucun entretien ne correspond à votre recherche.' : 'Aucun entretien pour le moment.'}
+            {filters.search ? 'Aucun entretien ne correspond à votre recherche.' : 'Aucun entretien pour le moment.'}
           </Typography>
           <Button
             variant="contained"
@@ -389,37 +293,43 @@ const EntretiensPage = () => {
       ) : (
         <Paper elevation={1}>
           <List sx={{ width: '100%', bgcolor: 'background.paper', p: 0 }}>
-            {sortedEntretiens.map((entretien, index) => (
+            {entretiens.map((entretien, index) => (
               <React.Fragment key={entretien.id}>
                 <ListItem
                   alignItems="flex-start"
                   sx={{
                     py: 2,
-                    bgcolor: isEntretienToday(entretien.date) && entretien.statut === 'planifie'
+                    bgcolor: isEntretienToday(entretien.date_entretien) && entretien.statut === 'planifie'
                       ? 'primary.50'
                       : 'inherit',
                   }}
                 >
                   <ListItemAvatar>
                     <Avatar
-                      alt={`${entretien.candidat.prenom} ${entretien.candidat.nom}`}
-                      src={entretien.candidat.photo}
+                      alt={entretien.candidat ? `${entretien.candidat.prenom} ${entretien.candidat.nom}` : ''}
+                      src={entretien.candidat?.photo}
                       sx={{
-                        bgcolor: entretien.type === 'video' ? 'primary.main' : 'secondary.main',
+                        bgcolor: entretien.mode === 'visio' ? 'primary.main' : 'secondary.main',
                       }}
                     >
-                      {entretien.type === 'video' ? <VideoCallIcon /> : <EventIcon />}
+                      {entretien.mode === 'visio' ? <VideoCallIcon /> : <EventIcon />}
                     </Avatar>
                   </ListItemAvatar>
                   <ListItemText
                     primary={
                       <Box display="flex" justifyContent="space-between" alignItems="center">
                         <Typography variant="subtitle1" fontWeight="medium">
-                          {entretien.candidat.prenom} {entretien.candidat.nom}
+                          {entretien.candidat?.prenom} {entretien.candidat?.nom}
                         </Typography>
                         {entretien.statut === 'planifie' ? (
                           <Chip
                             label="Planifié"
+                            color="primary"
+                            size="small"
+                          />
+                        ) : entretien.statut === 'confirme' ? (
+                          <Chip
+                            label="Confirmé"
                             color="primary"
                             size="small"
                           />
@@ -441,16 +351,16 @@ const EntretiensPage = () => {
                     secondary={
                       <>
                         <Typography variant="body2" color="text.primary">
-                          {entretien.offre.titre}
+                          {entretien.offre?.titre}
                         </Typography>
                         <Box display="flex" alignItems="center" mt={1}>
-                          {entretien.type === 'video' ? (
+                          {entretien.mode === 'visio' ? (
                             <VideoCallIcon fontSize="small" color="primary" sx={{ mr: 0.5 }} />
                           ) : (
                             <EventIcon fontSize="small" color="secondary" sx={{ mr: 0.5 }} />
                           )}
                           <Typography variant="body2" color="text.secondary">
-                            {entretien.type === 'video' ? 'Entretien visio' : 'Entretien en personne'} • {formatDate(entretien.date)} à {formatTime(entretien.date)} • {entretien.duree} min
+                            {entretien.mode === 'visio' ? 'Entretien visio' : 'Entretien en personne'} • {formatDate(entretien.date_entretien)} à {formatTime(entretien.date_entretien)} • {entretien.duree} min
                           </Typography>
                         </Box>
                         {entretien.notes && (
@@ -470,7 +380,7 @@ const EntretiensPage = () => {
                     </IconButton>
                   </ListItemSecondaryAction>
                 </ListItem>
-                {index < sortedEntretiens.length - 1 && <Divider component="li" />}
+                {index < entretiens.length - 1 && <Divider component="li" />}
               </React.Fragment>
             ))}
           </List>
@@ -483,9 +393,9 @@ const EntretiensPage = () => {
         open={Boolean(menuAnchorEl)}
         onClose={handleMenuClose}
       >
-        {selectedEntretien?.statut === 'planifie' && !isEntretienPassed(selectedEntretien?.date) && (
+        {selectedEntretien?.statut === 'planifie' && !isEntretienPassed(selectedEntretien?.date_entretien) && (
           <>
-            {selectedEntretien?.type === 'video' && (
+            {selectedEntretien?.mode === 'visio' && (
               <MenuItem onClick={handleOpenLinkDialog}>
                 <ListItemIcon>
                   <LinkIcon fontSize="small" />
@@ -511,7 +421,7 @@ const EntretiensPage = () => {
           </>
         )}
         <MenuItem onClick={() => {
-          navigate(`/recruteur/candidats/${selectedEntretien.candidat.id}`);
+          navigate(`/recruteur/candidats/${selectedEntretien?.candidat?.id}`);
           handleMenuClose();
         }}>
           <ListItemIcon>
@@ -520,7 +430,7 @@ const EntretiensPage = () => {
           <ListItemText>Voir le candidat</ListItemText>
         </MenuItem>
         <MenuItem onClick={() => {
-          navigate(`/recruteur/messages/nouveau/${selectedEntretien.candidat.id}`);
+          navigate(`/recruteur/messages/nouveau/${selectedEntretien?.candidat?.id}`);
           handleMenuClose();
         }}>
           <ListItemIcon>
@@ -545,7 +455,7 @@ const EntretiensPage = () => {
         <DialogTitle>Annuler l'entretien</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Êtes-vous sûr de vouloir annuler l'entretien avec {selectedEntretien?.candidat.prenom} {selectedEntretien?.candidat.nom} prévu le {selectedEntretien ? formatDate(selectedEntretien.date) : ''} à {selectedEntretien ? formatTime(selectedEntretien.date) : ''} ?
+            Êtes-vous sûr de vouloir annuler l'entretien avec {selectedEntretien?.candidat?.prenom} {selectedEntretien?.candidat?.nom} prévu le {selectedEntretien ? formatDate(selectedEntretien.date_entretien) : ''} à {selectedEntretien ? formatTime(selectedEntretien.date_entretien) : ''} ?
           </DialogContentText>
           <TextField
             autoFocus
@@ -555,6 +465,8 @@ const EntretiensPage = () => {
             variant="outlined"
             multiline
             rows={3}
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
           />
         </DialogContent>
         <DialogActions>
@@ -578,7 +490,11 @@ const EntretiensPage = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDeleteDialogOpen(false)}>Annuler</Button>
-          <Button onClick={handleDeleteEntretien} color="error" variant="contained">
+          <Button onClick={() => {
+            // Dans une application réelle, nous enverrions cette action à l'API
+            setDeleteDialogOpen(false);
+            handleMenuClose();
+          }} color="error" variant="contained">
             Supprimer
           </Button>
         </DialogActions>
